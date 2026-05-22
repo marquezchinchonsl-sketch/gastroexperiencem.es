@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reservar Mesa</title>
+  <meta name="theme-color" content="#f8f6f2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="reservas.css">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+</head>
+<body>
+
+  <header class="reservation-header">
+    <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i></a>
+    <div class="header-content">
+      <h1 id="res-bar-name">Reservar Mesa</h1>
+      <p id="res-bar-type"></p>
+    </div>
+    <div class="placeholder"></div>
+  </header>
+
+  <main class="reservation-container">
+    <section class="reservation-filters">
+      <div class="filter-group">
+        <label><i class="fas fa-users"></i> Personas</label>
+        <div class="custom-select">
+          <select id="people-select">
+            <option value="1">1 persona</option>
+            <option value="2" selected>2 personas</option>
+            <option value="3">3 personas</option>
+            <option value="4">4 personas</option>
+            <option value="5">5 personas</option>
+            <option value="6">6 personas</option>
+            <option value="7">7 personas</option>
+            <option value="8">8 personas</option>
+            <option value="9">9 personas</option>
+            <option value="10">10 personas</option>
+            <option value="11">11 personas</option>
+            <option value="12">12 personas</option>
+          </select>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label><i class="fas fa-calendar"></i> Fecha</label>
+        <div class="custom-input">
+          <input type="date" id="date-select">
+        </div>
+      </div>
+    </section>
+    <!-- Slots se inyectan aquí por JS -->
+  </main>
+
+  <div class="sticky-footer">
+    <button class="btn-primary" id="continue-btn" disabled>
+      <i class="fas fa-arrow-right"></i> Continuar con la reserva
+    </button>
+  </div>
+
+  <!-- Modal: Datos de contacto -->
+  <div id="reservation-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <h2>Finalizar Reserva</h2>
+        <button class="close-modal"><i class="fas fa-times"></i></button>
+      </div>
+      <form id="contact-form">
+        <div class="form-group">
+          <label for="user-name"><i class="fas fa-user"></i> Nombre Completo</label>
+          <input type="text" id="user-name" required placeholder="Tu nombre y apellido">
+        </div>
+        <div class="form-group">
+          <label for="user-phone"><i class="fas fa-phone"></i> Teléfono</label>
+          <input type="tel" id="user-phone" required placeholder="600 000 000">
+        </div>
+        <div class="form-group">
+          <label for="user-email"><i class="fas fa-envelope"></i> Email</label>
+          <input type="email" id="user-email" required placeholder="ejemplo@correo.com">
+        </div>
+        <div class="summary-preview">
+          <p><i class="fas fa-calendar"></i> Fecha: <span id="summary-date"></span></p>
+          <p><i class="fas fa-clock"></i> Hora: <span id="summary-time"></span></p>
+          <p><i class="fas fa-map-marker-alt"></i> Zona: <span id="summary-zone"></span></p>
+          <p><i class="fas fa-users"></i> Personas: <span id="summary-people"></span></p>
+        </div>
+        <button type="submit" class="btn-primary close-success" style="margin-top:0;">
+          <i class="fas fa-check"></i> Confirmar Reserva
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Éxito -->
+  <div id="success-modal" class="modal-overlay hidden">
+    <div class="modal-content success-content">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="success-icon"><i class="fas fa-check"></i></div>
+        <h2>¡Reserva Solicitada!</h2>
+        <p>Hemos recibido tu solicitud de reserva.</p>
+      </div>
+      <div class="success-details">
+        <p><strong>Cliente:</strong> <span id="success-name"></span></p>
+        <p><strong>Día:</strong> <span id="res-final-date"></span></p>
+        <p><strong>Hora:</strong> <span id="res-final-time"></span></p>
+        <p><strong>Zona:</strong> <span id="res-final-zone"></span></p>
+        <p><strong>Pax:</strong> <span id="res-final-people"></span></p>
+      </div>
+      <div class="success-footer">
+        <p><i class="fas fa-info-circle"></i> Recibirás un email de confirmación.</p>
+      </div>
+      <button class="btn-primary" id="go-home-btn">Volver al inicio</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const RID   = APP_CONFIG.restaurantId;
+    const db    = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+
+    const dateInput   = document.getElementById('date-select');
+    const peopleSelect= document.getElementById('people-select');
+    const continueBtn = document.getElementById('continue-btn');
+    const modal       = document.getElementById('reservation-modal');
+
+    let ZONES = [];
+    let ZONE_CAPACITY = {};
+    let selectedSlot = null;
+
+    // ── Init ──────────────────────────────────────────────────
+    document.title = `Reservar Mesa | ${APP_CONFIG.barName}`;
+    document.getElementById('res-bar-name').textContent = APP_CONFIG.barName;
+    document.getElementById('res-bar-type').textContent = APP_CONFIG.barTagline;
+
+    async function loadDynamicConfig() {
+      try {
+        const { data } = await db.from('settings').select('*').eq('restaurant_id', RID);
+        if (!data) return;
+        const get = k => data.find(x => x.key === k)?.value;
+        const bizName = get('biz_name');
+        if (bizName) {
+          APP_CONFIG.barName = bizName;
+          document.title = `Reservar Mesa | ${bizName}`;
+          document.getElementById('res-bar-name').textContent = bizName;
+        }
+        const bizTagline = get('biz_tagline');
+        if (bizTagline) {
+          APP_CONFIG.barTagline = bizTagline;
+          document.getElementById('res-bar-type').textContent = bizTagline;
+        }
+        
+        // Cargar config de email
+        APP_CONFIG.emailjsAdminEmail = get('ejs_admin_email') || APP_CONFIG.emailjsAdminEmail;
+        APP_CONFIG.emailjsPublicKey = get('ejs_public_key');
+        APP_CONFIG.emailjsServiceId = get('ejs_service_id');
+        APP_CONFIG.emailjsTemplateAdmin = get('ejs_template_admin');
+        APP_CONFIG.emailjsTemplateClient = get('ejs_template_client');
+      } catch (e) { console.warn('Error config dinámica:', e); }
+    }
+    loadDynamicConfig();
+
+    window.loadZones = async function() {
+      try {
+        const { data, error } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'zones_config').maybeSingle();
+        if (error && error.code !== 'PGRST116') throw error;
+        ZONES = data?.value ? JSON.parse(data.value) : APP_CONFIG.zones;
+      } catch (err) {
+        console.warn('Error cargando zonas, usando config:', err);
+        ZONES = APP_CONFIG.zones;
+      }
+      ZONE_CAPACITY = {};
+      ZONES.forEach(z => ZONE_CAPACITY[z.id] = parseInt(z.capacity) || 0);
+    }
+
+    async function getWeeklySchedule() {
+      const { data } = await db.from('settings').select('*').eq('key','weekly_schedule').eq('restaurant_id', RID).maybeSingle();
+      if (data?.value) {
+        try { return JSON.parse(data.value); } catch(e) {}
+      }
+      return {
+        lunes:     { open: false },
+        martes:    { open: true, from: "12:00", to: "16:00", from2: "19:00", to2: "23:00" },
+        miercoles: { open: true, from: "12:00", to: "16:00", from2: "19:00", to2: "23:00" },
+        jueves:    { open: true, from: "12:00", to: "16:00", from2: "19:00", to2: "23:00" },
+        viernes:   { open: true, from: "12:00", to: "16:00", from2: "19:00", to2: "23:59" },
+        sabado:    { open: true, from: "12:00", to: "16:00", from2: "19:00", to2: "23:59" },
+        domingo:   { open: true, from: "12:00", to: "18:00" }
+      };
+    }
+
+    async function getSpecialDay(dateStr) {
+      const { data } = await db.from('special_days').select('*').eq('date', dateStr).eq('restaurant_id', RID).maybeSingle();
+      return data || null;
+    }
+
+    function generateSlots(daySchedule) {
+      const slots = [];
+      const processTurn = (f, t) => {
+        if (!f || !t) return;
+        const [fh, fm] = f.split(':').map(Number);
+        const [th, tm] = t.split(':').map(Number);
+        const cur = new Date(); cur.setHours(fh, fm, 0, 0);
+        const end = new Date(); end.setHours(th, tm, 0, 0);
+        if (end < cur) end.setDate(end.getDate() + 1); // Fix overnight turn
+        end.setMinutes(end.getMinutes() - 30);
+        while (cur <= end) {
+          slots.push(cur.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', hour12:false }));
+          cur.setMinutes(cur.getMinutes() + 30);
+        }
+      };
+      processTurn(daySchedule.from, daySchedule.to);
+      processTurn(daySchedule.from2, daySchedule.to2);
+      return [...new Set(slots)].sort();
+    }
+
+    function clearSlots() {
+      document.querySelectorAll('.time-slots-section, .closed-message, .loader-dots').forEach(el => el.remove());
+      selectedSlot = null;
+      continueBtn.disabled = true;
+    }
+
+    function showClosed(html) {
+      const div = document.createElement('div');
+      div.className = 'closed-message';
+      div.innerHTML = html;
+      document.querySelector('.reservation-filters').after(div);
+    }
+
+    window.renderSlots = async function() {
+      if (ZONES.length === 0) await loadZones();
+      clearSlots();
+      const dateVal = dateInput.value;
+      if (!dateVal) return;
+
+      const loader = document.createElement('div');
+      loader.className = 'loader-dots';
+      loader.innerHTML = '<span></span><span></span><span></span>';
+      document.querySelector('.reservation-filters').after(loader);
+
+      try {
+        const [specialDay, schedule, {data: bookings}, {data: capLimit}] = await Promise.all([
+          getSpecialDay(dateVal),
+          getWeeklySchedule(),
+          db.from('reservations').select('time, people, zone').eq('date', dateVal).eq('restaurant_id', RID).neq('status', 'cancelled'),
+          db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'limit_pax').maybeSingle()
+        ]);
+
+        loader.remove();
+        const globalLimit = parseInt(capLimit?.value) || 0;
+        const days = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+        const daysLabels = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        const [y, m, d] = dateVal.split('-');
+        const dayIdx = new Date(y, m - 1, d).getDay();
+        const dayKey = days[dayIdx];
+        const dayLabel = daysLabels[dayIdx];
+
+        if (specialDay && specialDay.is_closed) {
+          showClosed('<i class="fas fa-calendar-times"></i> Cerrado por festivo o evento especial.');
+          return;
+        }
+
+        const daySchedule = schedule[dayKey];
+        if (!daySchedule || daySchedule.open === false) {
+          showClosed(`<i class="fas fa-moon"></i> Cerramos los ${dayLabel}s.`);
+          return;
+        }
+
+        const slots = generateSlots(daySchedule);
+        if (!slots.length) {
+          showClosed('<i class="fas fa-info-circle"></i> No hay horario disponible para este día.');
+          return;
+        }
+
+        ZONES.forEach(zone => {
+          const zoneCapacity = parseInt(ZONE_CAPACITY[zone.id]) || 0;
+          const reqPax       = parseInt(peopleSelect.value);
+          const section = document.createElement('section');
+          section.className = 'time-slots-section';
+          section.innerHTML = `<h3><i class="fas fa-map-marker-alt"></i> Zona: ${zone.title}</h3><div class="slots-grid"></div>`;
+          const grid = section.querySelector('.slots-grid');
+
+          slots.forEach(slot => {
+            const occupiedZone = (bookings || []).filter(b => b.time === slot && b.zone === zone.id).reduce((sum, b) => sum + (parseInt(b.people) || 0), 0);
+            const occupiedTotal = (bookings || []).filter(b => b.time === slot).reduce((sum, b) => sum + (parseInt(b.people) || 0), 0);
+            const isFullZone  = zoneCapacity > 0 && (occupiedZone + reqPax) > zoneCapacity;
+            const isFullTotal = globalLimit > 0 && (occupiedTotal + reqPax) > globalLimit;
+            const isFull = isFullZone || isFullTotal;
+
+            const btn = document.createElement('button');
+            btn.className = 'time-slot';
+            if (isFull) {
+              btn.classList.add('full'); btn.disabled = true;
+              btn.innerHTML = `<span class="cross-time">${slot}</span><span class="label-full">completo</span>`;
+            } else {
+              btn.textContent = slot;
+              btn.onclick = () => {
+                document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedSlot = { date: dateVal, time: slot, zone: zone.id, zoneName: zone.title };
+                continueBtn.disabled = false;
+              };
+            }
+            grid.appendChild(btn);
+          });
+          document.querySelector('.reservation-container').appendChild(section);
+        });
+      } catch (err) {
+        loader.remove();
+        console.error('Error renderSlots:', err);
+      }
+    }
+
+    async function saveReservation(res) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const source = urlParams.get('ref') || 'web'; 
+      
+      let isAutoConfirm = false;
+      try {
+        const { data: cfg } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'auto_confirm').maybeSingle();
+        if (cfg && cfg.value === 'true') isAutoConfirm = true;
+      } catch(e) {}
+      const status = isAutoConfirm ? 'confirmed' : 'pending';
+      const { error } = await db.from('reservations').insert([{
+        restaurant_id: RID, date: res.date, time: res.time, zone: res.zone, zonename: res.zoneName,
+        people: parseInt(res.people), name: res.name, phone: res.phone, email: res.email, status,
+        source
+      }]);
+      if (error) throw error;
+      return status;
+    }
+
+    async function sendEmail(res, status) {
+      const pub = APP_CONFIG.emailjsPublicKey;
+      const svc = APP_CONFIG.emailjsServiceId;
+      const tplAdmin = APP_CONFIG.emailjsTemplateAdmin;
+      const tplClient = APP_CONFIG.emailjsTemplateClient;
+      
+      if (!pub || !svc) return;
+      
+      try {
+        emailjs.init(pub);
+        if (tplAdmin && APP_CONFIG.emailjsAdminEmail) {
+          await emailjs.send(svc, tplAdmin, {
+            to_email: APP_CONFIG.emailjsAdminEmail, user_name: res.name, user_phone: res.phone, user_email: res.email,
+            res_date: res.date, res_time: res.time, res_people: res.people, res_zone: res.zoneName,
+            bar_name: APP_CONFIG.barName,
+          });
+        }
+        if (tplClient && status === 'confirmed') {
+          await emailjs.send(svc, tplClient, {
+            to_name: res.name, to_email: res.email, client_email: res.email,
+            reservation_date: res.date, reservation_time: res.time,
+            bar_name: APP_CONFIG.barName
+          });
+        }
+      } catch(e) { console.warn('EmailJS error:', e); }
+    }
+
+    const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+    dateInput.value = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+    dateInput.onchange = window.renderSlots;
+    peopleSelect.onchange = window.renderSlots;
+
+    continueBtn.onclick = () => {
+      if (!selectedSlot) return;
+      document.getElementById('summary-date').textContent   = selectedSlot.date;
+      document.getElementById('summary-time').textContent   = selectedSlot.time;
+      document.getElementById('summary-zone').textContent   = selectedSlot.zoneName;
+      document.getElementById('summary-people').textContent = peopleSelect.value + ' personas';
+      modal.classList.remove('hidden');
+    };
+
+    document.querySelector('.close-modal').onclick = () => modal.classList.add('hidden');
+    document.getElementById('contact-form').onsubmit = async e => {
+      e.preventDefault();
+      const btn = e.submitter || document.querySelector('#contact-form .close-success');
+      const orig = btn.innerHTML;
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+      const newRes = {
+        name: document.getElementById('user-name').value, phone: document.getElementById('user-phone').value,
+        email: document.getElementById('user-email').value, people: peopleSelect.value, ...selectedSlot,
+      };
+      try {
+        const status = await saveReservation(newRes);
+        try { await sendEmail(newRes, status); } catch(e) {}
+        modal.classList.add('hidden');
+        document.getElementById('success-name').textContent = newRes.name;
+        document.getElementById('res-final-date').textContent = newRes.date;
+        document.getElementById('res-final-time').textContent = newRes.time;
+        document.getElementById('res-final-zone').textContent = newRes.zoneName;
+        document.getElementById('res-final-people').textContent = newRes.people + ' personas';
+        document.getElementById('success-modal').classList.remove('hidden');
+      } catch(err) {
+        btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error: ' + err.message;
+        setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 3000);
+      }
+    };
+
+    document.getElementById('go-home-btn').onclick = () => location.href = 'index.html';
+    loadZones().then(() => window.renderSlots());
+  </script>
+</body>
+</html>
