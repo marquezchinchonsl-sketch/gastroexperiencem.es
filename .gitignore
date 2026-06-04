@@ -20,3 +20,4 @@ ESTE_ES_EL_SITIO.txt
 # Backup / local
 *.bak
 *.backup
+.vercel
