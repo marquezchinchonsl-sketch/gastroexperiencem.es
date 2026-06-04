@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> GastroExperience — Panel de Control</title>
+  <title>GastroExperience — Panel de Control</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -13,14 +13,16 @@
       --bg: #0a0a0a;
       --surface: #141414;
       --surface-2: #1c1c1c;
+      --surface-3: #222;
       --border: #2a2a2a;
       --gold: #c9a84c;
       --gold-dim: #8a7234;
       --text: #f5f0e8;
-      --text-dim: #888;
+      --text-dim: #777;
       --green: #4ade80;
       --red: #f87171;
-      --yellow: #fbbf24;
+      --blue: #60a5fa;
+      --purple: #a78bfa;
     }
     body {
       font-family: 'Inter', sans-serif;
@@ -28,6 +30,7 @@
       color: var(--text);
       min-height: 100vh;
     }
+
     /* ── Header ─────────────────────────────── */
     .header {
       background: var(--surface);
@@ -49,428 +52,256 @@
       letter-spacing: 0.05em;
     }
     .header-logo span { color: var(--text-dim); font-weight: 300; }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-    .header-right .version {
-      font-size: 0.72rem;
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .version {
+      font-size: 0.68rem;
       color: var(--text-dim);
       background: var(--surface-2);
       padding: 4px 10px;
       border-radius: 20px;
       border: 1px solid var(--border);
     }
-    .header-right .user-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.82rem;
-      color: var(--text-dim);
-    }
-    .header-right .user-pill i { color: var(--gold); }
+    .user-pill { font-size: 0.82rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+    .user-pill i { color: var(--gold); }
 
     /* ── Layout ──────────────────────────────── */
     .layout { display: flex; min-height: calc(100vh - 64px); }
+
+    /* ── Sidebar ─────────────────────────────── */
     .sidebar {
-      width: 240px;
+      width: 220px;
       background: var(--surface);
       border-right: 1px solid var(--border);
-      padding: 24px 0;
+      padding: 20px 0;
       flex-shrink: 0;
     }
-    .sidebar-section { margin-bottom: 32px; }
+    .sidebar-section { margin-bottom: 28px; }
     .sidebar-title {
-      font-size: 0.68rem;
+      font-size: 0.62rem;
       text-transform: uppercase;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.14em;
       color: var(--text-dim);
       padding: 0 20px;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
     .sidebar-link {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 20px;
-      font-size: 0.85rem;
+      padding: 9px 20px;
+      font-size: 0.82rem;
       color: var(--text-dim);
       cursor: pointer;
       transition: all 0.15s;
       border-left: 3px solid transparent;
+      text-decoration: none;
     }
     .sidebar-link:hover, .sidebar-link.active {
       color: var(--text);
       background: var(--surface-2);
       border-left-color: var(--gold);
     }
-    .sidebar-link i { width: 18px; text-align: center; }
+    .sidebar-link i { width: 16px; text-align: center; font-size: 0.85rem; }
     .sidebar-link .badge {
       margin-left: auto;
       background: var(--gold);
       color: #000;
-      font-size: 0.68rem;
+      font-size: 0.65rem;
       font-weight: 700;
-      padding: 2px 7px;
+      padding: 2px 6px;
       border-radius: 10px;
     }
-    .sidebar-link .badge.red { background: var(--red); color: #fff; }
-    .sidebar-link .badge.green { background: var(--green); color: #000; }
 
-    /* ── Main Content ────────────────────────── */
-    .main {
-      flex: 1;
-      padding: 32px;
-      overflow-y: auto;
-    }
+    /* ── Main ───────────────────────────────── */
+    .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
+
+    /* ── Page Header ─────────────────────────── */
     .page-header {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
-    .page-header h1 {
-      font-size: 1.6rem;
-      font-weight: 600;
-    }
-    .page-header h1 span {
-      color: var(--gold);
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
-      font-weight: 300;
-    }
-    .page-header p {
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      margin-top: 4px;
-    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 600; }
+    .page-header h1 span { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; }
+    .page-header p { color: var(--text-dim); font-size: 0.82rem; margin-top: 3px; }
 
     /* ── Buttons ────────────────────────────── */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      font-family: 'Inter', sans-serif;
-      cursor: pointer;
-      transition: all 0.15s;
-      border: none;
-      text-decoration: none;
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 9px 16px; border-radius: 8px; font-size: 0.8rem;
+      font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; transition: all 0.15s; border: none; text-decoration: none;
     }
     .btn-primary { background: var(--gold); color: #000; }
     .btn-primary:hover { background: #d4b45a; }
-    .btn-ghost {
-      background: var(--surface-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
+    .btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
     .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
-    .btn-danger { background: var(--red); color: #fff; }
-    .btn-sm { padding: 6px 12px; font-size: 0.75rem; }
+    .btn-sm { padding: 6px 12px; font-size: 0.72rem; }
 
-    /* ── Stats Cards ────────────────────────── */
-    .stats-grid {
+    /* ── Client Cards ────────────────────────── */
+    .clients-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 32px;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 18px;
     }
-    .stat-card {
+    .client-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px 24px;
-    }
-    .stat-card .label {
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 8px;
-    }
-    .stat-card .value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text);
-      font-family: 'Cormorant Garamond', serif;
-    }
-    .stat-card .value.gold { color: var(--gold); }
-    .stat-card .value.green { color: var(--green); }
-    .stat-card .sub {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      margin-top: 4px;
-    }
-
-    /* ── Clients Table ──────────────────────── */
-    .table-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
+      transition: border-color 0.2s;
     }
-    .table-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .table-header h2 {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-    .search-box {
-      position: relative;
-    }
-    .search-box input {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 12px 8px 36px;
-      color: var(--text);
-      font-size: 0.82rem;
-      font-family: 'Inter', sans-serif;
-      width: 260px;
-      transition: border-color 0.15s;
-    }
-    .search-box input:focus { outline: none; border-color: var(--gold); }
-    .search-box i {
-      position: absolute;
-      left: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-dim);
-      font-size: 0.85rem;
-    }
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      padding: 12px 24px;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      text-align: left;
-      background: var(--surface-2);
-      font-weight: 600;
-    }
-    tbody tr {
-      border-bottom: 1px solid var(--border);
-      transition: background 0.1s;
-    }
-    tbody tr:hover { background: var(--surface-2); }
-    tbody td {
-      padding: 16px 24px;
-      font-size: 0.85rem;
-    }
-    .client-name {
-      font-weight: 600;
-      color: var(--text);
-    }
-    .client-city {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      margin-top: 2px;
-    }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      font-size: 0.72rem;
-      font-weight: 600;
-    }
-    .status-pill.active { background: rgba(74,222,128,0.15); color: var(--green); }
-    .status-pill.pending { background: rgba(251,191,36,0.15); color: var(--yellow); }
-    .status-pill.inactive { background: rgba(248,113,113,0.15); color: var(--red); }
-    .status-pill::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-    .quick-actions {
-      display: flex;
-      gap: 6px;
-    }
-    .quick-actions a {
-      width: 30px;
-      height: 30px;
-      border-radius: 6px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-dim);
-      font-size: 0.82rem;
-      transition: all 0.15s;
-      text-decoration: none;
-    }
-    .quick-actions a:hover { border-color: var(--gold); color: var(--gold); }
-    .quick-actions a.supabase:hover { border-color: #3ecf8e; color: #3ecf8e; }
-    .quick-actions a.github:hover { border-color: #6e5494; color: #6e5494; }
-    .quick-actions a.vercel:hover { border-color: #fff; color: #fff; }
+    .client-card:hover { border-color: var(--gold-dim); }
 
-    /* ── Modal ──────────────────────────────── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.show { display: flex; }
-    .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      width: 100%;
-      max-width: 560px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    .modal-header {
-      padding: 24px;
+    /* Card header */
+    .card-header {
+      padding: 18px 20px 14px;
       border-bottom: 1px solid var(--border);
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
     }
-    .modal-header h2 { font-size: 1.1rem; }
-    .modal-header .close-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--surface-2);
-      border: none;
-      color: var(--text-dim);
-      cursor: pointer;
-      font-size: 1rem;
+    .card-header-left { display: flex; align-items: center; gap: 14px; }
+    .card-avatar {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem; font-weight: 600; color: var(--gold);
+      flex-shrink: 0;
     }
-    .modal-header .close-btn:hover { color: var(--text); }
-    .modal-body { padding: 24px; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label {
-      display: block;
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
+    .card-info h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .card-info .card-city { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 20px; font-size: 0.68rem; font-weight: 600;
     }
-    .form-group input, .form-group select {
-      width: 100%;
-      padding: 10px 14px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 0.88rem;
-      font-family: 'Inter', sans-serif;
+    .status-pill.active { background: rgba(74,222,128,0.12); color: var(--green); }
+    .status-pill.pending { background: rgba(251,191,36,0.12); color: var(--yellow); }
+    .status-pill.inactive { background: rgba(248,113,113,0.12); color: var(--red); }
+    .status-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+    /* Card body */
+    .card-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .card-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 0.78rem; min-height: 28px;
     }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--gold); }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .modal-footer {
-      padding: 16px 24px;
+    .card-row .icon {
+      width: 28px; height: 28px; border-radius: 7px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 0.78rem; flex-shrink: 0;
+    }
+    .card-row .icon.supabase { color: #3ecf8e; }
+    .card-row .icon.github { color: #8b5cf6; }
+    .card-row .icon.vercel { color: #fff; }
+    .card-row .icon.web { color: var(--gold); }
+    .card-row .icon.email { color: var(--blue); }
+    .card-row .icon.id { color: var(--purple); }
+    .card-row .label { color: var(--text-dim); min-width: 70px; }
+    .card-row .value { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .card-row .value a { color: var(--gold); text-decoration: none; }
+    .card-row .value a:hover { text-decoration: underline; }
+    .card-row .value.mono { font-family: 'Courier New', monospace; font-size: 0.72rem; }
+
+    /* Card footer */
+    .card-footer {
+      padding: 12px 20px;
       border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
+      display: flex; gap: 8px;
+      background: var(--surface-2);
     }
+    .card-footer .btn { flex: 1; justify-content: center; font-size: 0.75rem; padding: 8px; }
 
     /* ── Empty state ─────────────────────────── */
     .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text-dim);
+      text-align: center; padding: 60px 20px; color: var(--text-dim);
     }
-    .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.3; }
-    .empty-state h3 { font-size: 1rem; color: var(--text); margin-bottom: 8px; }
-    .empty-state p { font-size: 0.85rem; }
+    .empty-state i { font-size: 3rem; margin-bottom: 14px; opacity: 0.25; }
+    .empty-state h3 { font-size: 1rem; color: var(--text); margin-bottom: 7px; }
+    .empty-state p { font-size: 0.82rem; }
+
+    /* ── Modal ──────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h2 { font-size: 1rem; }
+    .close-btn {
+      width: 30px; height: 30px; border-radius: 7px;
+      background: var(--surface-2); border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 0.9rem; line-height: 1;
+    }
+    .close-btn:hover { color: var(--text); }
+    .modal-body { padding: 22px 24px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block; font-size: 0.7rem; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;
+    }
+    .form-group input, .form-group select {
+      width: 100%; padding: 9px 13px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.85rem; font-family: 'Inter', sans-serif;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--gold); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-footer {
+      padding: 14px 24px; border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
 
     /* ── Loading ────────────────────────────── */
     .spinner {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid var(--border);
-      border-top-color: var(--gold);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid var(--border); border-top-color: var(--gold);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(10,10,10,0.6);
-      z-index: 2000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
+      position: fixed; inset: 0; background: rgba(10,10,10,0.7); z-index: 2000;
+      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
     }
     .loading-overlay.show { display: flex; }
-    .loading-overlay span { color: var(--text-dim); font-size: 0.85rem; }
+    .loading-overlay span { color: var(--text-dim); font-size: 0.82rem; }
 
     /* ── Toast ───────────────────────────────── */
-    .toast-container {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      z-index: 3000;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+    .toast-container { position: fixed; bottom: 22px; right: 22px; z-index: 3000; display: flex; flex-direction: column; gap: 7px; }
     .toast {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 0.82rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 11px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 9px;
       animation: slideIn 0.3s ease;
     }
     .toast.success { border-color: var(--green); }
     .toast.error { border-color: var(--red); }
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
+    @keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div id="loading-overlay" class="loading-overlay">
-  <div class="spinner" style="width:32px;height:32px;border-width:3px;"></div>
+  <div class="spinner" style="width:28px;height:28px;border-width:3px;"></div>
   <span id="loading-text">Cargando...</span>
 </div>
-
-<!-- Toast -->
-<div id="toast-container" class="toast-container"></div>
 
 <!-- Header -->
 <header class="header">
   <div class="header-logo">GastroExperience <span>Control</span></div>
   <div class="header-right">
     <div class="version">v1.0 — SaaS Panel</div>
-    <div class="user-pill">
-      <i class="fas fa-user-circle"></i>
-      <span>Adrian Marquez</span>
-    </div>
+    <div class="user-pill"><i class="fas fa-user-circle"></i> Adrian Marquez</div>
   </div>
 </header>
 
@@ -481,10 +312,7 @@
   <nav class="sidebar">
     <div class="sidebar-section">
       <div class="sidebar-title">Navegación</div>
-      <div class="sidebar-link active" data-page="dashboard" onclick="showPage('dashboard')">
-        <i class="fas fa-chart-pie"></i> Dashboard
-      </div>
-      <div class="sidebar-link" data-page="clients" onclick="showPage('clients')">
+      <div class="sidebar-link active" data-page="clients" onclick="showPage('clients')">
         <i class="fas fa-building"></i> Restaurantes
         <span class="badge" id="badge-clients">0</span>
       </div>
@@ -496,24 +324,18 @@
       <div class="sidebar-title">Acceso Rápido</div>
       <a href="https://supabase.com/dashboard" target="_blank" class="sidebar-link">
         <i class="fas fa-database"></i> Supabase
-        <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:0.7rem;"></i>
       </a>
       <a href="https://github.com/marquezchinchonsl-sketch" target="_blank" class="sidebar-link">
         <i class="fab fa-github"></i> GitHub
-        <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:0.7rem;"></i>
       </a>
       <a href="https://vercel.com/dashboard" target="_blank" class="sidebar-link">
         <i class="fas fa-rocket"></i> Vercel
-        <i class="fas fa-external-link-alt" style="margin-left:auto;font-size:0.7rem;"></i>
       </a>
     </div>
     <div class="sidebar-section">
-      <div class="sidebar-title">Estado</div>
+      <div class="sidebar-title">Sistema</div>
       <div class="sidebar-link" style="cursor:default;">
-        <i class="fas fa-circle" style="color:var(--green);font-size:0.5rem;"></i> Sistema OK
-      </div>
-      <div class="sidebar-link" style="cursor:default;" id="sidebar-status">
-        <i class="fas fa-sync"></i> Última sync: --
+        <i class="fas fa-circle" style="color:var(--green);font-size:0.5rem;"></i> Operativo
       </div>
     </div>
   </nav>
@@ -521,78 +343,20 @@
   <!-- Main -->
   <main class="main">
 
-    <!-- Dashboard Page -->
-    <div id="page-dashboard">
+    <!-- Clients Page -->
+    <div id="page-clients">
       <div class="page-header">
         <div>
-          <h1>Dashboard</h1>
-          <p>Resumen de tu SaaS de restaurantes</p>
+          <h1>Restaurantes</h1>
+          <p id="clients-subtitle">Cargando...</p>
         </div>
-        <button class="btn btn-primary" onclick="showPage('new-client')">
+        <button class="btn btn-primary" onclick="openAddModal()">
           <i class="fas fa-plus"></i> Nuevo Cliente
         </button>
       </div>
 
-      <div class="stats-grid" id="stats-grid">
-        <div class="stat-card">
-          <div class="label">Total Clientes</div>
-          <div class="value gold" id="stat-total">-</div>
-          <div class="sub">restaurantes activos</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Activos</div>
-          <div class="value green" id="stat-active">-</div>
-          <div class="sub">funcionando</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Pendientes</div>
-          <div class="value" id="stat-pending">-</div>
-          <div class="sub">sin configurar</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Dominios</div>
-          <div class="value" id="stat-domains">-</div>
-          <div class="sub">con SSL activo</div>
-        </div>
-      </div>
-
-      <div class="table-card">
-        <div class="table-header">
-          <h2>Últimos restaurantes</h2>
-          <button class="btn btn-ghost btn-sm" onclick="showPage('clients')">Ver todos</button>
-        </div>
-        <div id="recent-clients-table">
-          <div class="empty-state">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Cargando...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Clients Page -->
-    <div id="page-clients" style="display:none;">
-      <div class="page-header">
-        <div>
-          <h1>Restaurantes</h1>
-          <p>Todos los clientes del SaaS</p>
-        </div>
-        <button class="btn btn-primary" onclick="openAddModal()">
-          <i class="fas fa-plus"></i> Añadir
-        </button>
-      </div>
-
-      <div class="table-card">
-        <div class="table-header">
-          <h2 id="clients-count">0 restaurantes</h2>
-          <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar restaurante..." id="search-input" oninput="filterClients()">
-          </div>
-        </div>
-        <div id="clients-table-container">
-          <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
-        </div>
+      <div id="clients-grid" class="clients-grid">
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
       </div>
     </div>
 
@@ -608,15 +372,15 @@
         </button>
       </div>
 
-      <div class="table-card">
-        <div class="table-header">
-          <h2>Datos del restaurante</h2>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:600px;">
+        <div style="padding:16px 22px;border-bottom:1px solid var(--border);font-size:0.85rem;font-weight:600;">
+          Datos del restaurante
         </div>
-        <div style="padding: 24px;">
+        <div style="padding:22px;">
           <form id="new-client-form" onsubmit="handleNewClient(event)">
             <div class="form-row">
               <div class="form-group">
-                <label>Nombre del restaurante *</label>
+                <label>Nombre *</label>
                 <input type="text" id="nc-name" placeholder="Restaurante El Sol" required>
               </div>
               <div class="form-group">
@@ -630,7 +394,7 @@
                 <input type="text" id="nc-domain" placeholder="elsol.com">
               </div>
               <div class="form-group">
-                <label>Email del admin *</label>
+                <label>Email admin *</label>
                 <input type="email" id="nc-email" placeholder="admin@elsol.com" required>
               </div>
             </div>
@@ -654,7 +418,7 @@
                 <input type="url" id="nc-vercel-url" placeholder="https://elsol.vercel.app">
               </div>
             </div>
-            <div style="margin-top: 24px; display: flex; gap: 10px;">
+            <div style="margin-top:18px;display:flex;gap:10px;">
               <button type="submit" class="btn btn-primary" id="nc-submit">
                 <i class="fas fa-plus"></i> Crear Cliente
               </button>
@@ -679,14 +443,22 @@
     </div>
     <div class="modal-body">
       <input type="hidden" id="modal-client-id">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="m-name" required>
+      </div>
       <div class="form-row">
-        <div class="form-group">
-          <label>Nombre *</label>
-          <input type="text" id="m-name" required>
-        </div>
         <div class="form-group">
           <label>Ciudad</label>
           <input type="text" id="m-city">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="m-status">
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="inactive">Inactive</option>
+          </select>
         </div>
       </div>
       <div class="form-group">
@@ -699,17 +471,17 @@
           <input type="url" id="m-supabase-url">
         </div>
         <div class="form-group">
-          <label>Status</label>
-          <select id="m-status">
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-          </select>
+          <label>Email</label>
+          <input type="email" id="m-email">
         </div>
       </div>
       <div class="form-group">
-        <label>Email</label>
-        <input type="email" id="m-email">
+        <label>Repo GitHub</label>
+        <input type="text" id="m-github" placeholder="org/repo">
+      </div>
+      <div class="form-group">
+        <label>URL Vercel</label>
+        <input type="url" id="m-vercel-url">
       </div>
     </div>
     <div class="modal-footer">
@@ -724,29 +496,20 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
-// ── Password Protection ─────────────────────────────────
-const DASHBOARD_PASSWORD = 'gastro2026';
-
-function checkDashboardPassword() {
-  const stored = sessionStorage.getItem('dash_auth');
-  if (stored === DASHBOARD_PASSWORD) return true;
-
-  const entered = prompt('Introduce la contraseña del panel de control:');
-  if (entered === DASHBOARD_PASSWORD) {
-    sessionStorage.setItem('dash_auth', DASHBOARD_PASSWORD);
-    return true;
+// ── Password ─────────────────────────────────────────────
+const DASHBOARD_PASSWORD = '***';
+if (sessionStorage.getItem('dash_auth') !== DASHBOARD_PASSWORD) {
+  const entered = prompt('Contraseña del panel de control:');
+  if (entered !== DASHBOARD_PASSWORD) {
+    document.body.innerHTML = '<div style="background:#0a0a0a;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;"><div style="text-align:center"><h1 style="color:#c9a84c;font-family:serif;font-size:2rem;margin-bottom:12px;">GastroExperience</h1><p style="color:#777;">Acceso restringido</p></div></div>';
+    throw new Error('Auth required');
   }
-  document.body.innerHTML = '<div style="background:#0a0a0a;height:100vh;display:flex;align-items:center;justify-content:center;color:#888;font-family:sans-serif;text-align:center;"><div><h1 style="color:#c9a84c;font-family:serif;font-size:2rem;margin-bottom:16px;">GastroExperience</h1><p>Acceso restringido</p></div></div>';
-  return false;
+  sessionStorage.setItem('dash_auth', DASHBOARD_PASSWORD);
 }
-
-if (!checkDashboardPassword()) throw new Error('Auth required');
 
 // ── State ─────────────────────────────────────────────────
 let allClients = [];
-let filteredClients = [];
 
-// ── Supabase ─────────────────────────────────────────────
 const db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
 
 // ── Init ─────────────────────────────────────────────────
@@ -756,78 +519,64 @@ async function loadClients() {
   showLoading('Cargando clientes...');
   const { data, error } = await db.from('clients').select('*').order('created_at', { ascending: false });
   hideLoading();
-  if (error) { toast('Error cargando clientes: ' + error.message, 'error'); return; }
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
   allClients = data || [];
-  updateStats();
-  updateTables();
+  renderClients();
   document.getElementById('badge-clients').textContent = allClients.length;
-  document.getElementById('sidebar-status').innerHTML = '<i class="fas fa-sync"></i> Actualizado hace 1 min';
 }
 
-function updateStats() {
-  const total = allClients.length;
-  const active = allClients.filter(c => c.status === 'active').length;
-  const pending = allClients.filter(c => c.status === 'pending').length;
-  const domains = allClients.filter(c => c.domain).length;
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-active').textContent = active;
-  document.getElementById('stat-pending').textContent = pending;
-  document.getElementById('stat-domains').textContent = domains;
-}
+function renderClients() {
+  const grid = document.getElementById('clients-grid');
+  const sub = document.getElementById('clients-subtitle');
+  sub.textContent = `${allClients.length} restaurante${allClients.length !== 1 ? 's' : ''}`;
 
-function updateTables() {
-  // Recent (dashboard)
-  const recent = allClients.slice(0, 5);
-  document.getElementById('recent-clients-table').innerHTML = recent.length
-    ? renderClientTable(recent, false)
-    : '<div class="empty-state"><i class="fas fa-building"></i><h3>Sin clientes</h3><p>Añade tu primer restaurante para empezar.</p></div>';
-  // Full table
-  document.getElementById('clients-count').textContent = `${allClients.length} restaurantes`;
-  document.getElementById('clients-table-container').innerHTML = allClients.length
-    ? renderClientTable(allClients, true)
-    : '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>';
-}
+  if (!allClients.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><h3>Sin clientes</h3><p>Añade tu primer restaurante con el botón de arriba.</p></div>';
+    return;
+  }
 
-function renderClientTable(clients, full) {
-  if (!clients.length) return '<div class="empty-state"><p>Sin resultados</p></div>';
-  const rows = clients.map(c => {
-    const links = [
-      c.supabase_url ? `<a href="${c.supabase_url}" target="_blank" class="supabase" title="Supabase"><i class="fas fa-database"></i></a>` : '',
-      c.github_repo ? `<a href="https://github.com/${c.github_repo}" target="_blank" class="github" title="GitHub"><i class="fab fa-github"></i></a>` : '',
-      c.vercel_url ? `<a href="${c.vercel_url}" target="_blank" class="vercel" title="Vercel"><i class="fas fa-rocket"></i></a>` : '',
-      c.domain ? `<a href="https://${c.domain}" target="_blank" class="vercel" title="Web"><i class="fas fa-globe"></i></a>` : '',
-    ].join('');
-    return `<tr>
-      <td>
-        <div class="client-name">${esc(c.name)}</div>
-        ${c.city ? `<div class="client-city">${esc(c.city)}</div>` : ''}
-      </td>
-      <td><span class="status-pill ${c.status || 'pending'}">${c.status || 'pending'}</span></td>
-      <td>${c.domain ? `<a href="https://${esc(c.domain)}" target="_blank" style="color:var(--gold);font-size:0.82rem;">${esc(c.domain)}</a>` : '<span style="color:var(--text-dim)">—</span>'}</td>
-      <td>${c.email ? esc(c.email) : '<span style="color:var(--text-dim)">—</span>'}</td>
-      <td>${c.created_at ? new Date(c.created_at).toLocaleDateString('es-ES') : '—'}</td>
-      <td>
-        <div class="quick-actions">
-          ${links}
-          <a href="#" onclick="editClient('${c.id}')" title="Editar"><i class="fas fa-pencil-alt"></i></a>
-          <a href="#" onclick="deleteClient('${c.id}')" title="Eliminar" style="color:var(--red)"><i class="fas fa-trash"></i></a>
+  grid.innerHTML = allClients.map(c => {
+    const initial = (c.name || '?')[0].toUpperCase();
+    const domain = c.domain || '';
+    const supabaseUrl = c.supabase_url || '';
+    const github = c.github_repo || '';
+    const vercelUrl = c.vercel_url || '';
+    const email = c.email || '';
+    const rid = c.restaurant_id || '';
+
+    return `<div class="client-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-avatar">${initial}</div>
+          <div class="card-info">
+            <h3>${esc(c.name)}</h3>
+            <div class="card-city">${esc(c.city || 'Sin ciudad')} · alta ${formatDate(c.created_at)}</div>
+          </div>
         </div>
-      </td>
-    </tr>`;
+        <span class="status-pill ${c.status || 'pending'}">${c.status || 'pending'}</span>
+      </div>
+      <div class="card-body">
+        ${domain ? `<div class="card-row"><div class="icon web"><i class="fas fa-globe"></i></div><span class="label">Web</span><span class="value"><a href="https://${esc(domain)}" target="_blank">${esc(domain)}</a></span></div>` : ''}
+        ${supabaseUrl ? `<div class="card-row"><div class="icon supabase"><i class="fas fa-database"></i></div><span class="label">Supabase</span><span class="value"><a href="${esc(supabaseUrl)}" target="_blank" class="mono">${esc(supabaseUrl.replace('https://', ''))}</a></span></div>` : ''}
+        ${github ? `<div class="card-row"><div class="icon github"><i class="fab fa-github"></i></div><span class="label">GitHub</span><span class="value"><a href="https://github.com/${esc(github)}" target="_blank">${esc(github)}</a></span></div>` : ''}
+        ${vercelUrl ? `<div class="card-row"><div class="icon vercel"><i class="fas fa-rocket"></i></div><span class="label">Vercel</span><span class="value"><a href="${esc(vercelUrl)}" target="_blank">${esc(vercelUrl.replace('https://', ''))}</a></span></div>` : ''}
+        ${email ? `<div class="card-row"><div class="icon email"><i class="fas fa-envelope"></i></div><span class="label">Email</span><span class="value">${esc(email)}</span></div>` : ''}
+        ${rid ? `<div class="card-row"><div class="icon id"><i class="fas fa-fingerprint"></i></div><span class="label">ID</span><span class="value mono" style="font-size:0.7rem;color:var(--text-dim)">${esc(rid)}</span></div>` : ''}
+      </div>
+      <div class="card-footer">
+        ${domain ? `<a href="https://${esc(domain)}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-external-link-alt"></i> Web</a>` : ''}
+        ${domain ? `<a href="https://${esc(domain)}/admin" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-cog"></i> Admin</a>` : ''}
+        <a href="#" onclick="editClient('${c.id}');return false" class="btn btn-ghost btn-sm"><i class="fas fa-pencil-alt"></i> Editar</a>
+        <a href="#" onclick="deleteClient('${c.id}');return false" class="btn btn-ghost btn-sm" style="color:var(--red)"><i class="fas fa-trash"></i></a>
+      </div>
+    </div>`;
   }).join('');
-  return `<table>
-    <thead>
-      <tr>
-        <th>Restaurante</th>
-        <th>Estado</th>
-        <th>Dominio</th>
-        <th>Email</th>
-        <th>Alta</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // ── Navigation ───────────────────────────────────────────
@@ -838,27 +587,14 @@ function showPage(page) {
   document.querySelectorAll('[id^="page-"]').forEach(el => { el.style.display = 'none'; });
   const el = document.getElementById('page-' + page);
   if (el) el.style.display = 'block';
-  if (page === 'dashboard') loadClients();
-}
-
-// ── Search ───────────────────────────────────────────────
-function filterClients() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  const filtered = allClients.filter(c =>
-    c.name.toLowerCase().includes(q) ||
-    (c.city || '').toLowerCase().includes(q) ||
-    (c.domain || '').toLowerCase().includes(q)
-  );
-  document.getElementById('clients-table-container').innerHTML = filtered.length
-    ? renderClientTable(filtered, true)
-    : '<div class="empty-state"><p>No encontrado</p></div>';
+  if (page === 'clients') loadClients();
 }
 
 // ── CRUD ──────────────────────────────────────────────────
 function openAddModal() {
   document.getElementById('modal-title').textContent = 'Nuevo Cliente';
   document.getElementById('modal-client-id').value = '';
-  ['m-name','m-city','m-domain','m-supabase-url','m-email','m-status'].forEach(id => {
+  ['m-name','m-city','m-domain','m-supabase-url','m-email','m-github','m-vercel-url','m-status'].forEach(id => {
     const el = document.getElementById(id);
     if (el.tagName === 'SELECT') el.selectedIndex = 0;
     else el.value = '';
@@ -876,6 +612,8 @@ function editClient(id) {
   document.getElementById('m-domain').value = c.domain || '';
   document.getElementById('m-supabase-url').value = c.supabase_url || '';
   document.getElementById('m-email').value = c.email || '';
+  document.getElementById('m-github').value = c.github_repo || '';
+  document.getElementById('m-vercel-url').value = c.vercel_url || '';
   document.getElementById('m-status').value = c.status || 'pending';
   document.getElementById('client-modal').classList.add('show');
 }
@@ -892,6 +630,8 @@ async function saveClient() {
     domain: document.getElementById('m-domain').value.trim(),
     supabase_url: document.getElementById('m-supabase-url').value.trim(),
     email: document.getElementById('m-email').value.trim(),
+    github_repo: document.getElementById('m-github').value.trim(),
+    vercel_url: document.getElementById('m-vercel-url').value.trim(),
     status: document.getElementById('m-status').value,
     updated_at: new Date().toISOString(),
   };
@@ -901,7 +641,7 @@ async function saveClient() {
     const { error: e } = await db.from('clients').update(data).eq('id', id);
     error = e;
   } else {
-    data.restaurant_id = 'rest-' + data.domain.replace(/[^a-z0-9]/gi, '-') + '-' + Date.now().toString(36);
+    data.restaurant_id = 'rest-' + (data.domain || data.name).toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString(36);
     const { error: e } = await db.from('clients').insert([data]);
     error = e;
   }
@@ -927,7 +667,7 @@ async function handleNewClient(e) {
   e.preventDefault();
   const name = document.getElementById('nc-name').value.trim();
   const city = document.getElementById('nc-city').value.trim();
-  const domain = document.getElementById('nc-domain').value.trim().toLowerCase().replace(/[^a-z0-9.]/gi, '');
+  const domain = document.getElementById('nc-domain').value.trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
   const email = document.getElementById('nc-email').value.trim();
   const supabase_url = document.getElementById('nc-supabase-url').value.trim();
   const supabase_anon_key = document.getElementById('nc-supabase-key').value.trim();
@@ -938,51 +678,50 @@ async function handleNewClient(e) {
     toast('Completa los campos obligatorios', 'error'); return;
   }
 
-  document.getElementById('nc-submit').disabled = true;
-  document.getElementById('nc-submit').innerHTML = '<span class="spinner"></span> Creando...';
+  const btn = document.getElementById('nc-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creando...';
 
-  const restaurant_id = 'rest-' + (domain || name).toLowerCase().replace(/[^a-z0-9]/gi, '-') + '-' + Date.now().toString(36);
+  const restaurant_id = 'rest-' + (domain || name).toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString(36);
   const { error } = await db.from('clients').insert([{
     restaurant_id, name, city, domain, email,
-    supabase_url, supabase_anon_key,
-    github_repo, vercel_url, status: 'active'
+    supabase_url, supabase_anon_key, github_repo, vercel_url, status: 'active'
   }]);
 
-  document.getElementById('nc-submit').disabled = false;
-  document.getElementById('nc-submit').innerHTML = '<i class="fas fa-plus"></i> Crear Cliente';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-plus"></i> Crear Cliente';
 
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Cliente creado con éxito', 'success');
   document.getElementById('new-client-form').reset();
   loadClients();
+  showPage('clients');
 }
 
 async function testConnection() {
   const url = document.getElementById('nc-supabase-url').value.trim();
   const key = document.getElementById('nc-supabase-key').value.trim();
-  if (!url || !key) { toast('Introduce URL y key de Supabase', 'error'); return; }
+  if (!url || !key) { toast('Introduce URL y key', 'error'); return; }
   const testDb = supabase.createClient(url, key);
   const { error } = await testDb.from('settings').select('key').limit(1);
-  if (error) { toast('Conexión fallida: ' + error.message, 'error'); }
-  else { toast('Conexión exitosa ✓', 'success'); }
+  if (error) toast('Conexión fallida: ' + error.message, 'error');
+  else toast('Conexión exitosa ✓', 'success');
 }
 
-// ── Utilities ────────────────────────────────────────────
+// ── Utils ────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-
 function showLoading(text) {
   document.getElementById('loading-text').textContent = text || 'Cargando...';
   document.getElementById('loading-overlay').classList.add('show');
 }
 function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
-
 function toast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = 'toast ' + (type === 'error' ? 'error' : 'success');
-  toast.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type === 'error' ? 'error' : 'success');
+  t.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
 }
 </script>
 </body>
