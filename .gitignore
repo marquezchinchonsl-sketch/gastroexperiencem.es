@@ -1,0 +1,22 @@
+# Entorno local / despliegue
+.env
+.env.*
+.env.local
+.vercel/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Archivos de debugging / prueba
+test_db.js
+fix_links.ps1
+ESTE_ES_EL_SITIO.txt
+
+# Backup / local
+*.bak
+*.backup

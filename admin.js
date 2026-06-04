@@ -1,8 +1,17 @@
 // admin.js — GastroExperience
 const RID = APP_CONFIG.restaurantId;
 const db  = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const { auth } = supabase;
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
+
+// ── Seguridad: escapar HTML para prevenir XSS ────────────
+const esc = s => String(s)
+  .replace(/&/g,'&amp;')
+  .replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;')
+  .replace(/'/g,'&#39;');
 
 // ── Config UI ────────────────────────────────────────────
 document.getElementById('login-bar-name').textContent = APP_CONFIG.barName;
@@ -41,25 +50,100 @@ function toast(msg, type = 'info') {
 // ── Login ─────────────────────────────────────────────────
 const loginOverlay = document.getElementById('login-overlay');
 const pwInput      = document.getElementById('admin-password');
+let storedEmail    = sessionStorage.getItem('admin_email') || '';
+
+// ── Rate Limiting ─────────────────────────────────────────
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS   = 5 * 60 * 1000; // 5 minutos
+
+function getRateLimitData() {
+  try {
+    return JSON.parse(sessionStorage.getItem('login_rl') || '{"count":0,"locked":0}');
+  } catch(e) { return { count: 0, locked: 0 }; }
+}
+function saveRateLimitData(d) { sessionStorage.setItem('login_rl', JSON.stringify(d)); }
+
+// ── CSRF: verificar sesión activa antes de operaciones sensibles ──
+function requireAdmin() {
+  if (sessionStorage.getItem('admin_auth') !== 'true' || !sessionStorage.getItem('admin_token')) {
+    sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_token');
+    sessionStorage.removeItem('admin_email');
+    window.location.href = '/admin.html';
+    throw new Error('Sesión no válida');
+  }
+}
+
+// Genera un token CSRF simple
+function genToken() {
+  const arr = new Uint8Array(32);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function finishLogin(token, email) {
+  if (email) sessionStorage.setItem('admin_email', email);
+  sessionStorage.setItem('admin_auth', 'true');
+  sessionStorage.setItem('admin_token', token);
+  saveRateLimitData({ count: 0, locked: 0 });
+  loginOverlay.classList.add('login-hide');
+  const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
+  const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
+  if (map[activeTab]) map[activeTab]();
+  checkOnboarding();
+  resetSessionTimeout();
+}
+
 async function checkLogin() {
+  const rate = getRateLimitData();
+  if (Date.now() < rate.locked) {
+    const remaining = Math.ceil((rate.locked - Date.now()) / 1000);
+    toast(`Demasiados intentos. Espera ${remaining}s antes de reintentar.`, 'error');
+    return;
+  }
+
   const inputVal = pwInput.value.trim();
-  
-  // Primero comprobamos si hay contraseña en BD
+  if (!inputVal) { toast('Introduce la contraseña.', 'error'); return; }
+
+  // Intentar login con Supabase Auth (nuevo flujo)
+  if (storedEmail) {
+    try {
+      const { data, error } = await auth.signInWithPassword({
+        email: storedEmail,
+        password: inputVal
+      });
+      if (!error && data.session) {
+        const token = genToken();
+        finishLogin(token, storedEmail);
+        return;
+      }
+    } catch(e) { console.warn('Auth login failed, trying legacy', e); }
+  }
+
+  // Fallback legacy: password en settings (backwards compat)
   let dbPass = null;
   try {
     const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
     dbPass = data;
   } catch(e) { console.warn('DB pass fetch error', e); }
-  const validPasswords = dbPass ? [dbPass.value] : APP_CONFIG.adminPasswords;
 
-  if (validPasswords.includes(inputVal)) {
-    sessionStorage.setItem('admin_auth','true');
-    loginOverlay.classList.add('login-hide');
-    const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
-    const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
-    if (map[activeTab]) map[activeTab]();
-    checkOnboarding();
+  if (!dbPass) {
+    window.location.href = '/setup.html';
+    return;
+  }
+
+  if (inputVal === dbPass.value) {
+    const token = genToken();
+    finishLogin(token, null); // legacy login, no email stored
   } else {
+    rate.count += 1;
+    if (rate.count >= MAX_ATTEMPTS) {
+      rate.locked = Date.now() + LOCKOUT_MS;
+      toast(`Demasiados intentos fallidos. Bloqueado por 5 minutos.`, 'error');
+    } else {
+      toast(`Contraseña incorrecta. Intento ${rate.count}/${MAX_ATTEMPTS}`, 'error');
+    }
+    saveRateLimitData(rate);
     pwInput.classList.add('shake');
     pwInput.value = '';
     setTimeout(() => pwInput.classList.remove('shake'), 500);
@@ -67,19 +151,46 @@ async function checkLogin() {
 }
 document.getElementById('login-btn').onclick = checkLogin;
 pwInput.onkeydown = e => { if(e.key==='Enter') checkLogin(); };
-window.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('admin_auth') === 'true') {
-    console.log('Autologin: Restaurando sesión desde sessionStorage');
+window.addEventListener('DOMContentLoaded', async () => {
+  if (sessionStorage.getItem('admin_auth') !== 'true') return;
+
+  // 1. Intentar restaurar sesión con Supabase Auth (nuevo flujo)
+  const { data: authSession } = await auth.getSession();
+  if (authSession?.session) {
+    const email = authSession.session.user?.email || '';
+    if (email && !sessionStorage.getItem('admin_email')) {
+      sessionStorage.setItem('admin_email', email);
+    }
+    const token = sessionStorage.getItem('admin_token') || genToken();
+    sessionStorage.setItem('admin_token', token);
+    console.log('Autologin: Restaurando sesión desde Supabase Auth');
     loginOverlay.classList.add('login-hide');
     const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
     const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
-    if (map[activeTab]) {
-      console.log('Autologin: Cargando pestaña ' + activeTab);
-      map[activeTab]();
-    }
+    if (map[activeTab]) map[activeTab]();
     checkOnboarding();
     resetSessionTimeout();
+    return;
   }
+
+  // 2. Fallback legacy: verificar que password existe en settings
+  const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
+  if (!data) {
+    sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_token');
+    window.location.href = '/setup.html';
+    return;
+  }
+  if (!sessionStorage.getItem('admin_token')) {
+    sessionStorage.setItem('admin_token', genToken());
+  }
+  console.log('Autologin: Restaurando sesión legacy');
+  loginOverlay.classList.add('login-hide');
+  const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
+  const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
+  if (map[activeTab]) map[activeTab]();
+  checkOnboarding();
+  resetSessionTimeout();
 });
 
 // ── Seguridad Ligera: Timeout de sesión ────────────────────
@@ -93,6 +204,8 @@ function resetSessionTimeout() {
   if (sessionStorage.getItem('admin_auth') === 'true') {
     sessionTimer = setTimeout(() => {
       sessionStorage.removeItem('admin_auth');
+      sessionStorage.removeItem('admin_token');
+      sessionStorage.removeItem('admin_email');
       toast('Sesión caducada por inactividad', 'warning');
       setTimeout(() => window.location.reload(), 1500);
     }, 15 * 60 * 1000); // 15 min
@@ -324,19 +437,19 @@ function renderTable(res) {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="text-align:center;">${sourceIcon}</td>
-      <td><strong>${r.time}</strong></td>
-      <td style="font-size:0.8rem;color:var(--text-dim);">${r.date}</td>
-      <td><strong>${r.name}</strong></td>
-      <td>${r.people || 0}</td>
-      <td><span class="zone-tag ${r.zone==='terrace'?'zone-terrace':''}">${r.zonename||r.zone}</span></td>
+      <td><strong>${esc(r.time)}</strong></td>
+      <td style="font-size:0.8rem;color:var(--text-dim);">${esc(r.date)}</td>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td>${esc(r.people || 0)}</td>
+      <td><span class="zone-tag ${r.zone==='terrace'?'zone-terrace':''}">${esc(r.zonename||r.zone)}</span></td>
       <td>${tableSelectHtml}</td>
-      <td><div style="font-size:0.85rem;">${r.phone}</div><div style="font-size:0.72rem;color:var(--text-dim);">${r.email}</div></td>
-      <td><span class="status-badge ${r.status}">${confirmed?'Confirmada':'Pendiente'}</span></td>
+      <td><div style="font-size:0.85rem;">${esc(r.phone)}</div><div style="font-size:0.72rem;color:var(--text-dim);">${esc(r.email)}</div></td>
+      <td><span class="status-badge ${esc(r.status)}">${confirmed?'Confirmada':'Pendiente'}</span></td>
       <td style="text-align:right;display:flex;gap:6px;justify-content:flex-end;">
         ${confirmed
           ? '<button class="action-btn notified" disabled><i class="fas fa-check"></i> Confirmado</button>'
-          : `<button class="action-btn confirm-res-btn" data-id="${r.id}" data-email="${r.email}" data-name="${r.name}" data-date="${r.date}" data-time="${r.time}" data-people="${r.people}" data-zone="${r.zone}"><i class="fas fa-check"></i> Confirmar</button>`}
-        <button class="action-btn delete-btn" data-id="${r.id}"><i class="fas fa-trash"></i></button>
+          : `<button class="action-btn confirm-res-btn" data-id="${esc(r.id)}" data-email="${esc(r.email)}" data-name="${esc(r.name)}" data-date="${esc(r.date)}" data-time="${esc(r.time)}" data-people="${esc(r.people)}" data-zone="${esc(r.zone)}"><i class="fas fa-check"></i> Confirmar</button>`}
+        <button class="action-btn delete-btn" data-id="${esc(r.id)}"><i class="fas fa-trash"></i></button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -376,8 +489,9 @@ function renderTable(res) {
 }
 
 async function confirmReservation(id, email, name, date, time, people, zone) {
+  requireAdmin();
   if (!confirm(`¿Confirmar reserva de ${name}?`)) return;
-  
+
   try {
     // Buscar asignación de mesa automática
     let notesVal = null;
@@ -434,8 +548,9 @@ async function confirmReservation(id, email, name, date, time, people, zone) {
 }
 
 async function deleteReservation(id) {
+  requireAdmin();
   if (!confirm('¿Eliminar esta reserva definitivamente?')) return;
-  
+
   try {
     const { error } = await db.from('reservations').delete().eq('id', id).eq('restaurant_id', RID);
     if (error) throw error;
@@ -467,6 +582,7 @@ if (document.getElementById('close-res-modal')) {
 
 document.getElementById('manual-res-form').onsubmit = async (e) => {
   e.preventDefault();
+  requireAdmin();
   const btn = e.target.querySelector('button[type="submit"]');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
   
@@ -547,15 +663,15 @@ function renderProducts() {
       <td style="text-align:center;color:var(--gold);font-weight:700;">${p.position||0}</td>
       <td style="text-align:center;"><i class="fas ${p.visible?'fa-eye':'fa-eye-slash'}" style="color:${p.visible?'var(--success)':'var(--error)'}"></i></td>
       <td style="display:flex;align-items:center;gap:10px;">
-        ${p.image_url?`<img src="${p.image_url}" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1px solid var(--border);" alt="">`:''}
-        <div><strong>${p.name}</strong>${p.is_sugerencia?' <span title="Recomendación" style="font-size:0.9rem;">⭐</span>':''}${p.allergens?.bestseller?' <span title="Más Vendido" style="font-size:0.9rem;">🔥</span>':''}<div style="font-size:0.75rem;color:var(--text-dim);">${(p.info||'').substring(0,40)}</div></div>
+        ${p.image_url?`<img src="${esc(p.image_url)}" style="width:38px;height:38px;object-fit:cover;border-radius:6px;border:1px solid var(--border);" alt="">`:''}
+        <div><strong>${esc(p.name)}</strong>${p.is_sugerencia?' <span title="Recomendación" style="font-size:0.9rem;">⭐</span>':''}${p.allergens?.bestseller?' <span title="Más Vendido" style="font-size:0.9rem;">🔥</span>':''}<div style="font-size:0.75rem;color:var(--text-dim);">${esc((p.info||'').substring(0,40))}</div></div>
       </td>
-      <td style="color:var(--text-dim);font-size:0.82rem;">${p.category}</td>
+      <td style="color:var(--text-dim);font-size:0.82rem;">${esc(p.category)}</td>
       <td style="color:var(--success);font-weight:700;">${parseFloat(p.price || 0).toFixed(2)} €</td>
       <td style="font-size:0.7rem;">${allergenBadges||'<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="text-align:right;">
-        <button class="action-btn edit-btn" onclick="openEditModal('${p.id}')"><i class="fas fa-edit"></i></button>
-        <button class="action-btn delete-btn" onclick="deleteProduct('${p.id}')"><i class="fas fa-trash"></i></button>
+        <button class="action-btn edit-btn" onclick="openEditModal('${esc(p.id)}')"><i class="fas fa-edit"></i></button>
+        <button class="action-btn delete-btn" onclick="deleteProduct('${esc(p.id)}')"><i class="fas fa-trash"></i></button>
       </td>`;
     tbody.appendChild(tr);
   });
@@ -613,6 +729,7 @@ window.previewImage = e => {
 
 document.getElementById('product-form').onsubmit = async e => {
   e.preventDefault();
+  requireAdmin();
   const btn = document.querySelector('#product-form .save-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   const id = document.getElementById('product-id').value;
@@ -865,6 +982,7 @@ async function loadSpecialDays() {
 }
 
 async function setSpecialDay(closed) {
+  requireAdmin();
   const d = document.getElementById('special-date-input').value;
   const reason = document.getElementById('special-reason-input') ? document.getElementById('special-reason-input').value : '';
   if (!d) { toast('Selecciona una fecha','error'); return; }
@@ -883,6 +1001,7 @@ async function setSpecialDay(closed) {
 document.getElementById('add-special-close-btn').onclick = () => setSpecialDay(true);
 document.getElementById('add-special-open-btn').onclick  = () => setSpecialDay(false);
 window.deleteSpecialDay = async date => {
+  requireAdmin();
   await db.from('special_days').delete().eq('date', date).eq('restaurant_id', RID);
   loadSpecialDays();
   toast('Día especial eliminado','info');
@@ -922,9 +1041,9 @@ function renderCategoriesList(cats) {
     div.style.cssText = 'display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:12px;';
     div.innerHTML = `
       <span style="font-size:1.1rem;cursor:grab;">⠿</span>
-      <input type="text" value="${cat.label}" data-idx="${i}" data-field="label" placeholder="Nombre de sección"
+      <input type="text" value="${esc(cat.label)}" data-idx="${i}" data-field="label" placeholder="Nombre de sección"
         style="flex:1;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-family:var(--font-body);font-size:0.9rem;color:var(--text);outline:none;" onfocus="this.style.borderColor='var(--border-gold)'" onblur="this.style.borderColor='var(--border)'">
-      <input type="text" value="${cat.id}" data-idx="${i}" data-field="id" placeholder="id (ej: pizzas)"
+      <input type="text" value="${esc(cat.id)}" data-idx="${i}" data-field="id" placeholder="id (ej: pizzas)"
         style="width:130px;padding:8px 12px;background:var(--surface);border:1.5px solid var(--border);border-radius:9px;font-family:var(--font-body);font-size:0.85rem;color:var(--text-dim);outline:none;" onfocus="this.style.borderColor='var(--border-gold)'" onblur="this.style.borderColor='var(--border)'">
       <button onclick="removeCategory(${i})" class="action-btn delete-btn" style="flex-shrink:0;"><i class="fas fa-trash"></i></button>`;
     div.querySelectorAll('input').forEach(inp => {
@@ -938,6 +1057,7 @@ function renderCategoriesList(cats) {
 }
 
 window.removeCategory = idx => {
+  requireAdmin();
   const list = document.getElementById('categories-list');
   const cats = list._cats;
   if (!confirm(`¿Eliminar la sección "${cats[idx].label}"? Los productos no se borran.`)) return;
@@ -977,6 +1097,7 @@ if (document.getElementById('ai-generate-menu-btn')) {
 }
 
 async function saveCategories() {
+  requireAdmin();
   const list = document.getElementById('categories-list');
   const cats = list._cats;
   if (!cats) return;
@@ -1062,6 +1183,7 @@ document.getElementById('save-biz-info-btn').onclick = async () => {
 };
 
 document.getElementById('save-biz-pass-btn').onclick = async () => {
+  requireAdmin();
   const pass = document.getElementById('biz-new-password').value.trim();
   if (pass.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
 
@@ -1115,6 +1237,7 @@ async function loadConfigTab() {
 
 if(document.getElementById('save-limits-btn')) {
   document.getElementById('save-limits-btn').onclick = async () => {
+    requireAdmin();
     const btn = document.getElementById('save-limits-btn');
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
     const val = document.getElementById('cfg-limit-pax').value;
@@ -1131,6 +1254,7 @@ if(document.getElementById('save-limits-btn')) {
 }
 
 document.getElementById('save-ejs-btn').onclick = async () => {
+  requireAdmin();
   const btn = document.getElementById('save-ejs-btn');
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
   const map = { ejs_admin_email:'ejs-admin-email', ejs_public_key:'ejs-public-key', ejs_service_id:'ejs-service-id', ejs_template_admin:'ejs-template-admin', ejs_template_client:'ejs-template-client' };
@@ -1414,12 +1538,12 @@ function renderZonesList() {
     div.style.cssText = 'display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; padding:14px 16px; background:var(--surface); border-radius:10px; border:1px solid var(--border); box-shadow:var(--shadow-sm);';
     div.innerHTML = `
       <div>
-        <strong style="display:block; font-size:1rem; color:var(--text);">${z.title}</strong>
+        <strong style="display:block; font-size:1rem; color:var(--text);">${esc(z.title)}</strong>
         <span style="font-size:0.8rem; color:var(--text-dim);">Los clientes podrán elegir esta zona al reservar</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <label style="font-size:0.8rem; color:var(--text-dim); white-space:nowrap;"><i class="fas fa-users" style="color:var(--gold);"></i> Aforo máx.</label>
-        <input type="number" value="${z.capacity}" min="1" max="500"
+        <input type="number" value="${esc(z.capacity)}" min="1" max="500"
           onchange="updateZoneCapacity(${idx}, this.value)"
           style="width:70px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:0.9rem; font-weight:600; text-align:center; background:var(--surface-2); color:var(--text); outline:none;"
           onfocus="this.style.borderColor='var(--gold)'"
@@ -1460,6 +1584,7 @@ document.getElementById('add-zone-btn').onclick = () => {
 };
 
 window.removeZone = (idx) => {
+  requireAdmin();
   if(confirm(`¿Eliminar la zona "${zonesData[idx].title}"? Las reservas existentes de esta zona no se borrarán pero no podrán usarla.`)) {
     zonesData.splice(idx, 1);
     renderZonesList();
@@ -1531,7 +1656,7 @@ function renderTablesMap(occupiedTables = []) {
     `;
     
     // Add internal grid or seats visual? Let's just keep it simple and elegant.
-    el.innerHTML = `<span style="font-weight:700; font-size:0.9rem; color:${textColor};">${t.name}</span><span style="font-size:0.7rem; color:var(--text-dim); margin-top:2px;">${t.capacity} pax</span>`;
+    el.innerHTML = `<span style="font-weight:700; font-size:0.9rem; color:${textColor};">${esc(t.name)}</span><span style="font-size:0.7rem; color:var(--text-dim); margin-top:2px;">${esc(t.capacity)} pax</span>`;
     
     // Drag Events
     const handleStart = (e) => {
@@ -1613,6 +1738,7 @@ document.getElementById('add-table-btn').onclick = () => {
 };
 
 window.removeTable = (idx) => {
+  requireAdmin();
   if(confirm('¿Eliminar esta mesa definitivamente del plano?')) {
     tablesData.splice(idx, 1);
     renderTablesList();
@@ -1621,9 +1747,10 @@ window.removeTable = (idx) => {
 };
 
 document.getElementById('save-tables-btn').onclick = async () => {
+  requireAdmin();
   const btn = document.getElementById('save-tables-btn');
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
-  
+
   const payload = [
     { restaurant_id: RID, key: 'tables_map', value: JSON.stringify(tablesData) },
     { restaurant_id: RID, key: 'zones_config', value: JSON.stringify(zonesData) }

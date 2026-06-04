@@ -43,8 +43,6 @@ const APP_CONFIG = {
     { id: "postres",      label: "Postres",        page: "postres",       img: "images/cat-postres.png"      },
   ],
 
-  // ── 8. CONTRASEÑA DEL PANEL DE ADMIN ──────────────────
-  adminPasswords: ["admin1234"],
 
 };
 
