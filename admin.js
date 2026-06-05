@@ -11,7 +11,9 @@ const SB = {
       in: (k, v) => Q(`${base}&${encodeURIComponent(k)}=in.(${encodeURIComponent(v)})`, headers),
       order: (c, a=true) => Q(`${base}&order=${encodeURIComponent(c)}.${a?'asc':'desc'}`, headers),
       limit: (n) => Q(`${base}&limit=${n}`, headers),
-      then: (fn, rej) => fetch_(base.replace(url,''), { headers }).then(fn).catch(rej||(e=>e)),
+      single: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: Array.isArray(r) ? r[0] : r, error: null })),
+      maybeSingle: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: !r || (Array.isArray(r) && r.length === 0) ? null : (Array.isArray(r) ? r[0] : r), error: null })),
+      then: (fn, rej) => fetch_(base.replace(url,''), { headers }).then(r => fn({ data: r, error: null })).catch(rej||(e=>fn({ data: null, error: e }))),
       catch: (fn) => fetch_(base.replace(url,''), { headers }).catch(fn)
     });
     return {
