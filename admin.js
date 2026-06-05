@@ -5,18 +5,27 @@ const SB = {
   createClient: (url, key) => {
     const hdrs = { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
     const fetch_ = (path, opts = {}) => fetch(`${url}${path}`, { ...opts, headers: { ...hdrs, ...(opts.headers||{}) } }).then(r => r.status === 204 ? {} : r.json());
+
+    // Query builder — chainable, NO thenable (avoid Promise.resolve triggering double-fetch)
     const Q = (base, headers) => ({
       select: (c='*') => Q(`${base}&select=${encodeURIComponent(c)}`, headers),
       eq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=eq.${encodeURIComponent(v)}`, headers),
       neq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=neq.${encodeURIComponent(v)}`, headers),
+      gte: (k, v) => Q(`${base}&${encodeURIComponent(k)}=gte.${encodeURIComponent(v)}`, headers),
+      lte: (k, v) => Q(`${base}&${encodeURIComponent(k)}=lte.${encodeURIComponent(v)}`, headers),
       in: (k, v) => Q(`${base}&${encodeURIComponent(k)}=in.(${encodeURIComponent(v)})`, headers),
       order: (c, a=true) => Q(`${base}&order=${encodeURIComponent(c)}.${a?'asc':'desc'}`, headers),
       limit: (n) => Q(`${base}&limit=${n}`, headers),
+      // Terminal ops return real Promises
       single: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: Array.isArray(r) ? r[0] : r, error: null })),
       maybeSingle: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: !r || (Array.isArray(r) && r.length === 0) ? null : (Array.isArray(r) ? r[0] : r), error: null })),
-      then: (fn, rej) => fetch_(base.replace(url,''), { headers }).then(r => fn({ data: r, error: null })).catch(rej||(e=>fn({ data: null, error: e }))),
-      catch: (fn) => fetch_(base.replace(url,''), { headers }).catch(fn)
+      then: (fn, rej) => new Promise(res => res(Q(base, headers))).then(fn).catch(rej||(e=>fn({ data: null, error: e }))),
+      catch: (fn) => new Promise(res => res(Q(base, headers))).catch(fn)
     });
+
+    // Wrap a Q in a real Promise so await returns the Q without re-fetching
+    const asPromise = q => new Promise(resolve => resolve(q));
+
     return {
       from: t => Q(`${url}/rest/v1/${t}?`, hdrs),
       rpc: (fn, args={}) => fetch_(`/rest/v1/rpc/${fn}`, { method:'POST', body: JSON.stringify(args) }),
