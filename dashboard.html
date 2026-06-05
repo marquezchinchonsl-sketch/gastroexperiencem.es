@@ -434,6 +434,19 @@
   </main>
 </div>
 
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h2 id="settings-title"><i class="fas fa-sliders-h" style="color:var(--gold);margin-right:8px;"></i> Ajustes</h2>
+      <button class="close-btn" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body" id="settings-body">
+      <!-- Dynamic content -->
+    </div>
+  </div>
+</div>
+
 <!-- Add/Edit Modal -->
 <div id="client-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
@@ -567,6 +580,7 @@ function renderClients() {
         ${domain ? `<a href="https://${esc(domain)}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-external-link-alt"></i> Web</a>` : ''}
         ${domain ? `<a href="https://${esc(domain)}/admin" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-cog"></i> Admin</a>` : ''}
         <a href="#" onclick="editClient('${c.id}');return false" class="btn btn-ghost btn-sm"><i class="fas fa-pencil-alt"></i> Editar</a>
+        <a href="#" onclick="openSettings('${c.id}');return false" class="btn btn-ghost btn-sm"><i class="fas fa-sliders-h"></i> Ajustes</a>
         <a href="#" onclick="deleteClient('${c.id}');return false" class="btn btn-ghost btn-sm" style="color:var(--red)"><i class="fas fa-trash"></i></a>
       </div>
     </div>`;
@@ -662,6 +676,151 @@ async function deleteClient(id) {
   loadClients();
 }
 
+// ── Settings ─────────────────────────────────────────────
+async function openSettings(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+
+  document.getElementById('settings-title').innerHTML = '<i class="fas fa-sliders-h" style="color:var(--gold);margin-right:8px;"></i> ' + esc(c.name);
+
+  const body = document.getElementById('settings-body');
+  body.innerHTML = `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:10px;">Información del restaurante</div>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-building"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Nombre</div>
+            <div style="font-size:0.85rem;font-weight:500;">${esc(c.name || '—')}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-map-marker-alt"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Ciudad</div>
+            <div style="font-size:0.85rem;font-weight:500;">${esc(c.city || '—')}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-globe"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Dominio</div>
+            <div style="font-size:0.85rem;">${c.domain ? `<a href="https://${esc(c.domain)}" target="_blank" style="color:var(--gold);">${esc(c.domain)}</a>` : '—'}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-envelope"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Email</div>
+            <div style="font-size:0.85rem;">${esc(c.email || '—')}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-database" style="color:#3ecf8e;"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Supabase</div>
+            <div style="font-size:0.78rem;font-family:monospace;color:var(--text-dim);word-break:break-all;">${esc(c.supabase_url || '—')}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-fingerprint" style="color:var(--purple);"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Restaurant ID</div>
+            <div style="font-size:0.72rem;font-family:monospace;color:var(--text-dim);word-break:break-all;">${esc(c.restaurant_id || '—')}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fab fa-github"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">GitHub</div>
+            <div style="font-size:0.85rem;">${c.github_repo ? `<a href="https://github.com/${esc(c.github_repo)}" target="_blank" style="color:var(--purple);">${esc(c.github_repo)}</a>` : '—'}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-rocket"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Vercel</div>
+            <div style="font-size:0.85rem;">${c.vercel_url ? `<a href="${esc(c.vercel_url)}" target="_blank" style="color:#fff;">${esc(c.vercel_url.replace('https://',''))}</a>` : '—'}</div>
+          </div>
+        </div>
+        <div class="card-row" style="padding:10px 14px;">
+          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-calendar"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:0.7rem;color:var(--text-dim);">Creado</div>
+            <div style="font-size:0.85rem;">${formatDate(c.created_at)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:10px;">Cambiar contraseña admin</div>
+      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <input type="hidden" id="set-supabase-url" value="${esc(c.supabase_url || '')}">
+        <input type="hidden" id="set-supabase-key" value="${esc(c.supabase_anon_key || '')}">
+        <input type="hidden" id="set-restaurant-id" value="${esc(c.restaurant_id || '')}">
+        <div class="form-group">
+          <label>Nueva contraseña</label>
+          <input type="password" id="set-new-password" placeholder="Escribe la nueva contraseña" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="set-confirm-password" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="changeClientPassword()">
+          <i class="fas fa-key"></i> Actualizar contraseña
+        </button>
+        <div id="set-password-msg" style="margin-top:10px;font-size:0.78rem;text-align:center;"></div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('settings-modal').classList.add('show');
+}
+
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('show');
+}
+
+async function changeClientPassword() {
+  const supabaseUrl = document.getElementById('set-supabase-url').value;
+  const supabaseKey = document.getElementById('set-supabase-key').value;
+  const restaurantId = document.getElementById('set-restaurant-id').value;
+  const newPass = document.getElementById('set-new-password').value;
+  const confirmPass = document.getElementById('set-confirm-password').value;
+  const msgEl = document.getElementById('set-password-msg');
+
+  if (!newPass || newPass.length < 4) {
+    msgEl.innerHTML = '<span style="color:var(--red)">La contraseña debe tener al menos 4 caracteres</span>';
+    return;
+  }
+  if (newPass !== confirmPass) {
+    msgEl.innerHTML = '<span style="color:var(--red)">Las contraseñas no coinciden</span>';
+    return;
+  }
+  if (!supabaseUrl || !supabaseKey || !restaurantId) {
+    msgEl.innerHTML = '<span style="color:var(--red)">Faltan datos del cliente (Supabase no configurado)</span>';
+    return;
+  }
+
+  msgEl.innerHTML = '<span style="color:var(--text-dim)"><span class="spinner"></span> Actualizando...</span>';
+
+  try {
+    const clientDb = supabase.createClient(supabaseUrl, supabaseKey);
+    const { error } = await clientDb.from('settings').upsert(
+      { restaurant_id: restaurantId, key: 'admin_password', value: newPass },
+      { onConflict: 'restaurant_id,key' }
+    );
+    if (error) throw error;
+    msgEl.innerHTML = '<span style="color:var(--green)">✓ Contraseña actualizada correctamente</span>';
+    document.getElementById('set-new-password').value = '';
+    document.getElementById('set-confirm-password').value = '';
+  } catch(e) {
+    msgEl.innerHTML = '<span style="color:var(--red)">Error: ' + esc(e.message) + '</span>';
+  }
+}
+
 // ── New Client Form ──────────────────────────────────────
 async function handleNewClient(e) {
   e.preventDefault();
@@ -724,5 +883,7 @@ function toast(msg, type = 'info') {
   setTimeout(() => t.remove(), 4000);
 }
 </script>
+
+<div id="toast-container"></div>
 </body>
 </html>
