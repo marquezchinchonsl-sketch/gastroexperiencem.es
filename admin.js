@@ -1,4 +1,5 @@
 // admin.js — GastroExperience
+const RID = APP_CONFIG.restaurantId;
 // Mini Supabase-like client usando fetch REST (sin CDN)
 const SB = {
   createClient: (url, key) => {
