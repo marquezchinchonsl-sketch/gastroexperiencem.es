@@ -153,24 +153,9 @@ async function checkLogin() {
   }
 
   // Fallback legacy: password en settings (backwards compat)
-  // Intentar login sin verificar password primero — finishLogin establece el contexto RLS
+  // finishLogin establece el contexto RLS para que las queries funcionen
   const token = genToken();
-  await finishLogin(token, null); // legacy login, no email stored
-  // Si finishLogin logra establecer contexto, el panel cargará
-  // Si falla por RLS, el usuario verá errores dentro del admin (no redirect prematuro)
-  } else {
-    rate.count += 1;
-    if (rate.count >= MAX_ATTEMPTS) {
-      rate.locked = Date.now() + LOCKOUT_MS;
-      toast(`Demasiados intentos fallidos. Bloqueado por 5 minutos.`, 'error');
-    } else {
-      toast(`Contraseña incorrecta. Intento ${rate.count}/${MAX_ATTEMPTS}`, 'error');
-    }
-    saveRateLimitData(rate);
-    pwInput.classList.add('shake');
-    pwInput.value = '';
-    setTimeout(() => pwInput.classList.remove('shake'), 500);
-  }
+  await finishLogin(token, null);
 }
 document.getElementById('login-btn').onclick = checkLogin;
 pwInput.onkeydown = e => { if(e.key==='Enter') checkLogin(); };
