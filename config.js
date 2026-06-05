@@ -59,6 +59,8 @@ if (typeof window !== 'undefined') {
     if (path === 'index' || path === '') path = 'index'; // Normalizar inicio
     if (!window.location.pathname.includes('admin') && typeof supabase !== 'undefined') {
       const db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+      // Fix RLS: set restaurant context for this session
+      db.rpc('set_current_restaurant', { p_restaurant_id: APP_CONFIG.restaurantId }).catch(()=>{});
       db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
         .then(({data}) => {
           try {

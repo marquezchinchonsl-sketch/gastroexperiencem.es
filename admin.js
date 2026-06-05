@@ -81,7 +81,11 @@ function genToken() {
   return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
 }
 
-function finishLogin(token, email) {
+async function finishLogin(token, email) {
+  // Fix RLS: set current restaurant context for all DB queries in this session
+  try {
+    await db.rpc('set_current_restaurant', { p_restaurant_id: RID });
+  } catch(e) { console.warn('RLS ctx:', e.message); }
   if (email) sessionStorage.setItem('admin_email', email);
   sessionStorage.setItem('admin_auth', 'true');
   sessionStorage.setItem('admin_token', token);
@@ -114,7 +118,7 @@ async function checkLogin() {
       });
       if (!error && data.session) {
         const token = genToken();
-        finishLogin(token, storedEmail);
+        await finishLogin(token, storedEmail);
         return;
       }
     } catch(e) { console.warn('Auth login failed, trying legacy', e); }
@@ -134,7 +138,7 @@ async function checkLogin() {
 
   if (inputVal === dbPass.value) {
     const token = genToken();
-    finishLogin(token, null); // legacy login, no email stored
+    await finishLogin(token, null); // legacy login, no email stored
   } else {
     rate.count += 1;
     if (rate.count >= MAX_ATTEMPTS) {
@@ -157,6 +161,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 1. Intentar restaurar sesión con Supabase Auth (nuevo flujo)
   const { data: authSession } = await auth.getSession();
   if (authSession?.session) {
+    try { await db.rpc('set_current_restaurant', { p_restaurant_id: RID }); } catch(e) {}
     const email = authSession.session.user?.email || '';
     if (email && !sessionStorage.getItem('admin_email')) {
       sessionStorage.setItem('admin_email', email);
@@ -185,6 +190,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     sessionStorage.setItem('admin_token', genToken());
   }
   console.log('Autologin: Restaurando sesión legacy');
+  try { await db.rpc('set_current_restaurant', { p_restaurant_id: RID }); } catch(e) {}
   loginOverlay.classList.add('login-hide');
   const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
   const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
