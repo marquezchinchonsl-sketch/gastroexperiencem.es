@@ -85,6 +85,8 @@
       let items = [];
 
       try {
+        // Fix RLS: set current restaurant context
+        await db.rpc('set_current_restaurant', { p_restaurant_id: RID });
         let query = db.from('menu_items').select('*')
           .eq('restaurant_id', RID)
           .eq('visible', true)
