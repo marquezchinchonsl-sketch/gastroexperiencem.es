@@ -1,7 +1,7 @@
 // admin.js — GastroExperience
 const RID = APP_CONFIG.restaurantId;
-const db  = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
-const { auth } = supabase;
+const db  = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const { auth } = window.supabase;
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
 
@@ -83,9 +83,7 @@ function genToken() {
 
 async function finishLogin(token, email) {
   // Fix RLS: set current restaurant context for all DB queries in this session
-  try {
-    await db.rpc('set_current_restaurant', { p_restaurant_id: RID });
-  } catch(e) { console.warn('RLS ctx:', e.message); }
+  await db.rpc('set_current_restaurant', { p_restaurant_id: RID });
   if (email) sessionStorage.setItem('admin_email', email);
   sessionStorage.setItem('admin_auth', 'true');
   sessionStorage.setItem('admin_token', token);

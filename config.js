@@ -57,10 +57,10 @@ if (typeof window !== 'undefined') {
     let path = window.location.pathname.split('/').pop() || 'index';
     if (path.endsWith('.html')) path = path.replace('.html', '');
     if (path === 'index' || path === '') path = 'index'; // Normalizar inicio
-    if (!window.location.pathname.includes('admin') && typeof supabase !== 'undefined') {
-      const db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+    if (!window.location.pathname.includes('admin') && typeof window.supabase !== 'undefined') {
+      const db = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
       // Fix RLS: set restaurant context for this session
-      db.rpc('set_current_restaurant', { p_restaurant_id: APP_CONFIG.restaurantId }).catch(()=>{});
+      db.rpc('set_current_restaurant', { p_restaurant_id: APP_CONFIG.restaurantId }).then(()=>{}).catch(()=>{});
       db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
         .then(({data}) => {
           try {
