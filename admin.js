@@ -1,7 +1,8 @@
 // admin.js — GastroExperience
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const RID = APP_CONFIG.restaurantId;
-const SB  = window.supabase;
-const db  = SB.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const SB  = createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const db  = SB;
 const { auth } = SB;
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
