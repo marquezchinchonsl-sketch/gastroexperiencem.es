@@ -1,8 +1,34 @@
 // admin.js — GastroExperience
-const RID = APP_CONFIG.restaurantId;
-const SB  = window.supabase;
-const db  = SB.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
-const { auth } = SB;
+// Mini Supabase-like client usando fetch REST (sin CDN)
+const SB = {
+  createClient: (url, key) => {
+    const hdrs = { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
+    const fetch_ = (path, opts = {}) => fetch(`${url}${path}`, { ...opts, headers: { ...hdrs, ...(opts.headers||{}) } }).then(r => r.status === 204 ? {} : r.json());
+    const Q = (base, headers) => ({
+      select: (c='*') => Q(`${base}&select=${encodeURIComponent(c)}`, headers),
+      eq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=eq.${encodeURIComponent(v)}`, headers),
+      neq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=neq.${encodeURIComponent(v)}`, headers),
+      in: (k, v) => Q(`${base}&${encodeURIComponent(k)}=in.(${encodeURIComponent(v)})`, headers),
+      order: (c, a=true) => Q(`${base}&order=${encodeURIComponent(c)}.${a?'asc':'desc'}`, headers),
+      limit: (n) => Q(`${base}&limit=${n}`, headers),
+      then: (fn, rej) => fetch_(base.replace(url,''), { headers }).then(fn).catch(rej||(e=>e)),
+      catch: (fn) => fetch_(base.replace(url,''), { headers }).catch(fn)
+    });
+    return {
+      from: t => Q(`${url}/rest/v1/${t}?`, hdrs),
+      rpc: (fn, args={}) => fetch_(`/rest/v1/rpc/${fn}`, { method:'POST', body: JSON.stringify(args) }),
+      channel: () => ({ on: () => ({ subscribe: ()=>{} }) }),
+      auth: {
+        signInWithPassword: (email, password) =>
+          fetch_(`/auth/v1/token?grant_type=password`, { method:'POST', headers:{'Content-Type':'application/json','apikey':key}, body: JSON.stringify({email,password}) }),
+        getSession: () => Promise.resolve({ data:{ session: null } }),
+        signOut: () => Promise.resolve({})
+      }
+    };
+  }
+};
+const db = SB.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const auth = db.auth;
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
 
