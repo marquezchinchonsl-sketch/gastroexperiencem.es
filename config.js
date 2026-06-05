@@ -51,21 +51,7 @@ if (typeof module !== 'undefined') module.exports = APP_CONFIG;
 // ── SAAS FEATURES: TRADUCCIÓN Y TRACKING ─────────────────
 if (typeof window !== 'undefined') {
   window.addEventListener('DOMContentLoaded', () => {
-    // 1. Inyectar Google Translate en clientes
-    if (document.body && !document.getElementById('google_translate_element') && !window.location.pathname.includes('admin')) {
-      const gt = document.createElement('div');
-      gt.id = 'google_translate_element';
-      gt.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:9999; background:white; border-radius:8px; padding:5px; box-shadow:0 4px 12px rgba(0,0,0,0.1);';
-      document.body.appendChild(gt);
-
-      window.googleTranslateElementInit = function() {
-        new google.translate.TranslateElement({pageLanguage: 'es', includedLanguages: 'en,fr,de,it,pt,es', layout: google.translate.TranslateElement.InlineLayout.SIMPLE}, 'google_translate_element');
-      };
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      document.body.appendChild(script);
-    }
+    // Google Translate eliminado a petición del cliente
 
     // 2. Tracking de Vistas de Categorías
     let path = window.location.pathname.split('/').pop() || 'index';
