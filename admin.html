@@ -900,6 +900,27 @@ Responde siempre en español, de forma concisa (máximo 200 palabras), con conse
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>
+const APP_CONFIG = {
+  barName: "MI RESTAURANTE",
+  barTagline: "Gastrobar · Cocina de Mercado",
+  barAddress: "Calle Ejemplo, 1",
+  barCity: "Madrid",
+  barPhone: "600 000 000",
+  barPhone2: "",
+  siteUrl: "https://gastroexperience.es",
+  supabaseUrl: "https://xornvhqqjovcucpuqgoo.supabase.co",
+  supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzMzNTcsImV4cCI6MjA5MzQwOTM1N30.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA",
+  restaurantId: "demo-restaurante",
+  zones: [{ id: "interior", title: "Interior", capacity: 20 }, { id: "terraza", title: "Terraza", capacity: 30 }],
+  menuCategories: [
+    { id: "raciones", label: "Raciones", page: "raciones", img: "images/cat-raciones.png" },
+    { id: "hamburguesas", label: "Hamburguesas", page: "hamburguesas", img: "images/cat-hamburguesas.png" },
+    { id: "bebidas", label: "Bebidas", page: "bebidas", img: "images/cat-bebidas.png" },
+    { id: "postres", label: "Postres", page: "postres", img: "images/cat-postres.png" }
+  ]
+};
+</script>
 <script type="module" src="admin.js?v=2.5"></script>
 
 </body>
