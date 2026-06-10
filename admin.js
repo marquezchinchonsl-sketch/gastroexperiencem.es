@@ -169,7 +169,7 @@ async function checkLogin() {
   } catch(e) { console.warn('DB pass fetch error', e); }
 
   // Si no hay password en BD, usar password por defecto (primer acceso)
-  const DEFAULT_PASS = 'gastro2026';
+  const DEFAULT_PASS = 'admin1234';
   const validPass = dbPass ? dbPass.value : DEFAULT_PASS;
 
 
