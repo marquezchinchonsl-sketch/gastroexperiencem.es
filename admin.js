@@ -162,7 +162,30 @@ async function checkLogin() {
   }
 
   // Fallback legacy: password en settings (backwards compat)
-  // finishLogin establece el contexto RLS para que las queries funcionen
+  let dbPass = null;
+  try {
+    const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
+    dbPass = data;
+  } catch(e) { console.warn('DB pass fetch error', e); }
+
+  if (!dbPass) {
+    toast('Error: No hay contraseña configurada. Ejecuta setup.html primero.', 'error');
+    return;
+  }
+
+  if (inputVal !== dbPass.value) {
+    rate.count += 1;
+    saveRateLimitData(rate);
+    if (rate.count >= MAX_ATTEMPTS) {
+      rate.locked = Date.now() + LOCKOUT_MS;
+      saveRateLimitData(rate);
+      toast(`Demasiados intentos. Espera ${Math.ceil(LOCKOUT_MS/1000)}s.`, 'error');
+    } else {
+      toast('Contraseña incorrecta.', 'error');
+    }
+    return;
+  }
+
   const token = genToken();
   await finishLogin(token, null);
 }
