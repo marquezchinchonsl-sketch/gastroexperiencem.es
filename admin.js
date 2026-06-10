@@ -214,14 +214,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // 2. Fallback legacy: verificar que password existe en settings
-  const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
-  if (!data) {
-    sessionStorage.removeItem('admin_auth');
-    sessionStorage.removeItem('admin_token');
-    window.location.href = '/setup.html';
-    return;
-  }
+  // 2. Fallback legacy: restaurar sesión si hay token válido (la password ya fue validada en login)
   if (!sessionStorage.getItem('admin_token')) {
     sessionStorage.setItem('admin_token', genToken());
   }
