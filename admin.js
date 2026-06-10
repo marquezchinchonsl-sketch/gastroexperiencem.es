@@ -1,46 +1,7 @@
 // admin.js — GastroExperience
 const RID = APP_CONFIG.restaurantId;
-// Mini Supabase-like client usando fetch REST (sin CDN)
-const SB = {
-  createClient: (url, key) => {
-    const hdrs = { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
-    const fetch_ = (path, opts = {}) => fetch(`${url}${path}`, { ...opts, headers: { ...hdrs, ...(opts.headers||{}) } }).then(r => r.status === 204 ? {} : r.json());
-
-    // Query builder — chainable, NO thenable (avoid Promise.resolve triggering double-fetch)
-    const Q = (base, headers) => ({
-      select: (c='*') => Q(`${base}&select=${encodeURIComponent(c)}`, headers),
-      eq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=eq.${encodeURIComponent(v)}`, headers),
-      neq: (k, v) => Q(`${base}&${encodeURIComponent(k)}=neq.${encodeURIComponent(v)}`, headers),
-      gte: (k, v) => Q(`${base}&${encodeURIComponent(k)}=gte.${encodeURIComponent(v)}`, headers),
-      lte: (k, v) => Q(`${base}&${encodeURIComponent(k)}=lte.${encodeURIComponent(v)}`, headers),
-      in: (k, v) => Q(`${base}&${encodeURIComponent(k)}=in.(${encodeURIComponent(v)})`, headers),
-      order: (c, a=true) => Q(`${base}&order=${encodeURIComponent(c)}.${a?'asc':'desc'}`, headers),
-      limit: (n) => Q(`${base}&limit=${n}`, headers),
-      // Terminal ops return real Promises
-      single: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: Array.isArray(r) ? r[0] : r, error: null })),
-      maybeSingle: () => fetch_(base.replace(url,''), { headers }).then(r => ({ data: !r || (Array.isArray(r) && r.length === 0) ? null : (Array.isArray(r) ? r[0] : r), error: null })),
-      then: (fn, rej) => new Promise(res => res(Q(base, headers))).then(fn).catch(rej||(e=>fn({ data: null, error: e }))),
-      catch: (fn) => new Promise(res => res(Q(base, headers))).catch(fn)
-    });
-
-    // Wrap a Q in a real Promise so await returns the Q without re-fetching
-    const asPromise = q => new Promise(resolve => resolve(q));
-
-    return {
-      from: t => Q(`${url}/rest/v1/${t}?`, hdrs),
-      rpc: (fn, args={}) => fetch_(`/rest/v1/rpc/${fn}`, { method:'POST', body: JSON.stringify(args) }),
-      channel: () => ({ on: () => ({ subscribe: ()=>{} }) }),
-      auth: {
-        signInWithPassword: (email, password) =>
-          fetch_(`/auth/v1/token?grant_type=password`, { method:'POST', headers:{'Content-Type':'application/json','apikey':key}, body: JSON.stringify({email,password}) }),
-        getSession: () => Promise.resolve({ data:{ session: null } }),
-        signOut: () => Promise.resolve({})
-      }
-    };
-  }
-};
-const db = SB.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
-const auth = db.auth;
+const db  = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+const { auth } = supabase;
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
 
@@ -120,9 +81,7 @@ function genToken() {
   return Array.from(arr, b => b.toString(16).padStart(2,'0')).join('');
 }
 
-async function finishLogin(token, email) {
-  // Fix RLS: set current restaurant context for all DB queries in this session
-  await db.rpc('set_current_restaurant', { p_restaurant_id: RID });
+function finishLogin(token, email) {
   if (email) sessionStorage.setItem('admin_email', email);
   sessionStorage.setItem('admin_auth', 'true');
   sessionStorage.setItem('admin_token', token);
@@ -155,7 +114,7 @@ async function checkLogin() {
       });
       if (!error && data.session) {
         const token = genToken();
-        await finishLogin(token, storedEmail);
+        finishLogin(token, storedEmail);
         return;
       }
     } catch(e) { console.warn('Auth login failed, trying legacy', e); }
@@ -168,26 +127,26 @@ async function checkLogin() {
     dbPass = data;
   } catch(e) { console.warn('DB pass fetch error', e); }
 
-  // Si no hay password en BD, usar password por defecto (primer acceso)
   const DEFAULT_PASS = 'admin1234';
   const validPass = dbPass ? dbPass.value : DEFAULT_PASS;
+  if (!dbPass) console.warn('No admin password in DB, using default');
 
-
-  if (inputVal !== validPass) {
+  if (inputVal === validPass) {
+    const token = genToken();
+    finishLogin(token, null); // legacy login, no email stored
+  } else {
     rate.count += 1;
-    saveRateLimitData(rate);
     if (rate.count >= MAX_ATTEMPTS) {
       rate.locked = Date.now() + LOCKOUT_MS;
-      saveRateLimitData(rate);
-      toast(`Demasiados intentos. Espera ${Math.ceil(LOCKOUT_MS/1000)}s.`, 'error');
+      toast(`Demasiados intentos fallidos. Bloqueado por 5 minutos.`, 'error');
     } else {
-      toast('Contraseña incorrecta.', 'error');
+      toast(`Contraseña incorrecta. Intento ${rate.count}/${MAX_ATTEMPTS}`, 'error');
     }
-    return;
+    saveRateLimitData(rate);
+    pwInput.classList.add('shake');
+    pwInput.value = '';
+    setTimeout(() => pwInput.classList.remove('shake'), 500);
   }
-
-  const token = genToken();
-  await finishLogin(token, null);
 }
 document.getElementById('login-btn').onclick = checkLogin;
 pwInput.onkeydown = e => { if(e.key==='Enter') checkLogin(); };
@@ -197,7 +156,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 1. Intentar restaurar sesión con Supabase Auth (nuevo flujo)
   const { data: authSession } = await auth.getSession();
   if (authSession?.session) {
-    try { await db.rpc('set_current_restaurant', { p_restaurant_id: RID }); } catch(e) {}
     const email = authSession.session.user?.email || '';
     if (email && !sessionStorage.getItem('admin_email')) {
       sessionStorage.setItem('admin_email', email);
@@ -214,12 +172,11 @@ window.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
-  // 2. Fallback legacy: restaurar sesión si hay token válido (la password ya fue validada en login)
+  // 2. Fallback legacy: session storage auth es suficiente
   if (!sessionStorage.getItem('admin_token')) {
     sessionStorage.setItem('admin_token', genToken());
   }
   console.log('Autologin: Restaurando sesión legacy');
-  try { await db.rpc('set_current_restaurant', { p_restaurant_id: RID }); } catch(e) {}
   loginOverlay.classList.add('login-hide');
   const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
   const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
