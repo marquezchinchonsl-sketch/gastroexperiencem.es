@@ -168,12 +168,12 @@ async function checkLogin() {
     dbPass = data;
   } catch(e) { console.warn('DB pass fetch error', e); }
 
-  if (!dbPass) {
-    toast('Error: No hay contraseña configurada. Ejecuta setup.html primero.', 'error');
-    return;
-  }
+  // Si no hay password en BD, usar password por defecto (primer acceso)
+  const DEFAULT_PASS = 'gastro2026';
+  const validPass = dbPass ? dbPass.value : DEFAULT_PASS;
 
-  if (inputVal !== dbPass.value) {
+
+  if (inputVal !== validPass) {
     rate.count += 1;
     saveRateLimitData(rate);
     if (rate.count >= MAX_ATTEMPTS) {
