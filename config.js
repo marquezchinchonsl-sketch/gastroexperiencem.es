@@ -37,10 +37,10 @@ const APP_CONFIG = {
 
   // ── 7. CATEGORÍAS DE LA CARTA ──────────────────────────
   menuCategories: [
-    { id: "raciones",     label: "Raciones",     page: "raciones",     img: "images/cat-raciones.png"     },
-    { id: "hamburguesas", label: "Hamburguesas",  page: "hamburguesas",  img: "images/cat-hamburguesas.png" },
-    { id: "bebidas",      label: "Bebidas",       page: "bebidas",       img: "images/cat-bebidas.png"      },
-    { id: "postres",      label: "Postres",        page: "postres",       img: "images/cat-postres.png"      },
+    { id: "raciones",     label: "Raciones",     page: "raciones",     img: "cat-raciones.png"     },
+    { id: "hamburguesas", label: "Hamburguesas",  page: "hamburguesas",  img: "cat-hamburguesas.png" },
+    { id: "bebidas",      label: "Bebidas",       page: "bebidas",       img: "cat-bebidas.png"      },
+    { id: "postres",      label: "Postres",        page: "postres",       img: "cat-postres.png"      },
   ],
 
 
