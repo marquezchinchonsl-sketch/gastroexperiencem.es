@@ -2,6 +2,69 @@
 const RID = APP_CONFIG.restaurantId;
 const db  = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
 const { auth } = supabase;
+
+// ── Modo Demo: datos falsos cuando RLS bloquea la BD ───
+const IS_DEMO = false; // BD real
+
+// Generar reservas fake para últimos 30 días
+function generateDemoReservations() {
+  const names = ['Carlos García','María López','Pedro Sánchez','Ana Martínez','Juan Rodríguez','Laura Fernández','Miguel Torres','Sofia Ruiz','David Jiménez','Elena Castro','Isabel Navarro','Antonio Ruiz'];
+  const hours = ['13:00','13:30','14:00','14:30','20:00','20:30','21:00','21:30'];
+  const zones = ['interior','terraza'];
+  const today = new Date();
+  const reservations = [];
+  for (let d = 30; d >= 0; d--) {
+    const date = new Date(today); date.setDate(date.getDate() - d);
+    const dateStr = date.toISOString().split('T')[0];
+    const num = 2 + Math.floor(Math.random() * 7);
+    for (let i = 0; i < num; i++) {
+      const status = d === 0 ? 'confirmed' : (Math.random() > 0.15 ? 'completed' : 'cancelled');
+      reservations.push({
+        id: 'demo-' + dateStr + '-' + i,
+        date: dateStr,
+        time: hours[Math.floor(Math.random() * hours.length)],
+        name: names[Math.floor(Math.random() * names.length)],
+        phone: '6' + String(Math.floor(Math.random() * 900000000 + 100000000)),
+        people: 2 + Math.floor(Math.random() * 5),
+        zone: zones[Math.floor(Math.random() * zones.length)],
+        status: status,
+        notes: Math.random() > 0.8 ? 'Mesa cerca de ventana' : '',
+        source: Math.random() > 0.5 ? 'web' : 'phone'
+      });
+    }
+  }
+  return reservations;
+}
+
+const DEMO_RESERVATIONS = generateDemoReservations();
+
+const DEMO_WEEKLY_SCHEDULE = {
+  monday:    { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '23:30' },
+  tuesday:   { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '23:30' },
+  wednesday: { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '23:30' },
+  thursday:  { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '23:30' },
+  friday:    { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '00:00' },
+  saturday:  { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '00:00' },
+  sunday:    { open: true, from: '12:00', to: '16:00', from2: '19:30', to2: '23:00' }
+};
+
+const DEMO_TABLES_MAP = {
+  interior: [
+    { id: 'int-1', name: 'Mesa 1', chairs: 4 },
+    { id: 'int-2', name: 'Mesa 2', chairs: 4 },
+    { id: 'int-3', name: 'Mesa 3', chairs: 4 },
+    { id: 'int-4', name: 'Mesa 4', chairs: 6 },
+    { id: 'int-5', name: 'Mesa 5', chairs: 6 },
+    { id: 'int-6', name: 'Mesa 6', chairs: 2 },
+  ],
+  terraza: [
+    { id: 'ter-1', name: 'Terraza 1', chairs: 4 },
+    { id: 'ter-2', name: 'Terraza 2', chairs: 4 },
+    { id: 'ter-3', name: 'Terraza 3', chairs: 6 },
+    { id: 'ter-4', name: 'Terraza 4', chairs: 4 },
+    { id: 'ter-5', name: 'Terraza 5', chairs: 2 },
+  ]
+};
 const ALLERGENS = ['gluten','crustaceos','huevos','pescado','cacahuetes','soja','lacteos','frutos_cascara','apio','mostaza','sesamo','azufre','altramuces','moluscos','setas'];
 const ALLERGEN_NAMES = {gluten:'Gluten',crustaceos:'Crustáceos',huevos:'Huevos',pescado:'Pescado',cacahuetes:'Cacahuetes',soja:'Soja',lacteos:'Lácteos',frutos_cascara:'Frutos secos',apio:'Apio',mostaza:'Mostaza',sesamo:'Sésamo',azufre:'Azufre',altramuces:'Altramuces',moluscos:'Moluscos',setas:'Setas'};
 
@@ -277,9 +340,11 @@ async function loadDashboard() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
   }
 
-  if (!tablesData || tablesData.length === 0) {
+  if ((!tablesData || tablesData.length === 0) && !IS_DEMO) {
     const tRes = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle();
     if (tRes.data && tRes.data.value) tablesData = JSON.parse(tRes.data.value);
+  } else if (false && !tablesData || tablesData.length === 0)) {
+    tablesData = DEMO_TABLES_MAP;
   }
 
   let query = db.from('reservations').select('*').eq('restaurant_id', RID).neq('status', 'cancelled');
@@ -288,22 +353,29 @@ async function loadDashboard() {
     query = query.eq('date', dateInput.value).order('time');
     if (resStatusFilter) query = query.eq('status', resStatusFilter);
   } else {
-    // Si no hay fecha, mostramos desde hoy en adelante (hora local)
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
     const today = new Date(Date.now() - tzOffset).toISOString().split('T')[0];
     query = query.gte('date', today).order('date').order('time');
     if (resStatusFilter) query = query.eq('status', resStatusFilter);
-    else query = query.eq('status', 'pending'); // Por defecto pendientes
+    else query = query.eq('status', 'pending');
   }
   
   try {
     const { data, error } = await query;
     if (error) throw error;
-    updateStats(data || []);
-    renderTable(data || []);
+    const realData = data || [];
+    updateStats(realData);
+    renderTable(realData);
   } catch (err) {
     console.error('Error cargando reservas:', err);
-    toast('Error al cargar reservas. Reintenta.', 'error');
+    // Demo deshabilitado - solo BD real
+    if (false) {
+      const demoData = DEMO_RESERVATIONS.filter(r => r.status !== 'cancelled').slice(0, 20);
+      updateStats(realData);
+      renderTable(realData);
+    } else {
+      toast('Error al cargar reservas. Reintenta.', 'error');
+    }
   } finally {
     if (btn) btn.innerHTML = orig;
   }
@@ -786,9 +858,87 @@ document.getElementById('import-data-btn').onclick = () => {
   CATEGORIES.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.label; sel.appendChild(o); });
   document.getElementById('import-text').value = '';
   document.getElementById('import-modal').classList.add('open');
+  // Reset to supabase tab
+  switchImportTab('supabase');
 };
 
 document.getElementById('close-import-modal').onclick = () => document.getElementById('import-modal').classList.remove('open');
+
+// Tab switching
+function switchImportTab(tab) {
+  ['supabase','ia'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('panel-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ── Importar desde otro proyecto Supabase ────────────────
+document.getElementById('do-supabase-import').onclick = async () => {
+  const btn = document.getElementById('do-supabase-import');
+  const status = document.getElementById('import-status');
+  const sbUrl = document.getElementById('import-sb-url').value.trim();
+  const sbKey = document.getElementById('import-sb-key').value.trim();
+  const sbRid = document.getElementById('import-sb-rid').value.trim();
+
+  if (!sbUrl || !sbKey || !sbRid) {
+    status.style.display = 'block'; status.style.color = 'var(--error)';
+    status.textContent = '⚠️ Rellena todos los campos'; return;
+  }
+
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+  status.style.display = 'block'; status.style.color = 'var(--text-dim)';
+  status.textContent = '⏳ Conectando con el proyecto origen...';
+
+  try {
+    // 1. Fetch menu items from source
+    const res = await fetch(`${sbUrl}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(sbRid)}&select=*`,
+      { headers: { 'apikey': sbKey, 'Content-Type': 'application/json' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const items = await res.json();
+    if (!items || items.length === 0) throw new Error('No se encontraron platos en ese proyecto');
+
+    status.textContent = `📦 ${items.length} platos encontrados. Importando...`;
+
+    // 2. Insert into current restaurant
+    let ok = 0, err = 0;
+    for (const item of items) {
+      const ins = await fetch(`${APP_CONFIG.supabaseUrl}/rest/v1/menu_items`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': APP_CONFIG.supabaseKey,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates'
+          },
+          body: JSON.stringify({
+            restaurant_id: APP_CONFIG.restaurantId,
+            name: item.name,
+            description: item.description || '',
+            price: item.price,
+            category: item.category,
+            image: item.image || '',
+            allergens: item.allergens || [],
+            available: item.available !== false,
+            position: item.position || 0,
+            visible: item.visible !== false
+          })
+        });
+      if (ins.ok || ins.status === 201) ok++; else err++;
+    }
+
+    status.style.color = 'var(--success)';
+    status.textContent = `✅ Importación completada: ${ok} platos importados${err ? `, ${err} errores` : ''}.`;
+    btn.innerHTML = '<i class="fas fa-check"></i> Importado';
+    btn.style.background = 'var(--success)';
+
+    // Refresh products list
+    setTimeout(() => { loadProducts(); }, 1500);
+  } catch(e) {
+    status.style.color = 'var(--error)';
+    status.textContent = `❌ Error: ${e.message}`;
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-import"></i> Reintentar';
+  }
+};
 
 document.getElementById('process-import-btn').onclick = async () => {
   const btn = document.getElementById('process-import-btn');
@@ -1367,15 +1517,21 @@ async function loadMetrics() {
     d.setDate(d.getDate() - 7);
     const dateStr = d.toISOString().split('T')[0];
     
-    const [resData, viewsData] = await Promise.all([
-      db.from('reservations').select('*').eq('restaurant_id', APP_CONFIG.restaurantId).gte('date', dateStr),
-      db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
-    ]);
-    
-    const res = (resData.data || []).filter(r => r.status !== 'cancelled');
-    let views = {};
-    if (viewsData.data && viewsData.data.value) {
-      try { views = JSON.parse(viewsData.data.value); } catch(e){}
+    let res = [], views = {};
+    // Demo deshabilitado - solo BD real
+    if (false) {
+      const today = new Date().toISOString().split('T')[0];
+      res = DEMO_RESERVATIONS.filter(r => r.status !== 'cancelled' && r.date >= dateStr);
+      views = { 'carta': 124, 'reservas': 89, 'raciones': 56, 'hamburguesas': 43, 'bebidas': 31 };
+    } else {
+      const [resData, viewsData] = await Promise.all([
+        db.from('reservations').select('*').eq('restaurant_id', APP_CONFIG.restaurantId).gte('date', dateStr),
+        db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
+      ]);
+      res = (resData.data || []).filter(r => r.status !== 'cancelled');
+      if (viewsData.data && viewsData.data.value) {
+        try { views = JSON.parse(viewsData.data.value); } catch(e){}
+      }
     }
     
     const elRes = document.getElementById('metric-total-res');
@@ -1405,7 +1561,7 @@ async function loadMetrics() {
           type: 'bar',
           data: {
             labels: last7Days.map(x => x.substring(5).split('-').reverse().join('/')),
-            datasets: [{ label: 'Reservas', data: resByDay, backgroundColor: '#C5A866', borderRadius: 4 }]
+            datasets: [{ label: 'Reservas', data: resByDay, backgroundColor: 'var(--primary, #7A1028)', borderRadius: 4 }]
           },
           options: { responsive: true, maintainAspectRatio: false }
         });
@@ -1422,7 +1578,7 @@ async function loadMetrics() {
           type: 'doughnut',
           data: {
             labels: APP_CONFIG.zones.map(z => z.title),
-            datasets: [{ data: APP_CONFIG.zones.map(z => zoneCounts[z.id]), backgroundColor: ['#C5A866', '#1A1A1A', '#e5e7eb'] }]
+            datasets: [{ data: APP_CONFIG.zones.map(z => zoneCounts[z.id]), backgroundColor: ['var(--primary, #7A1028)', '#1A1A1A', '#e5e7eb'] }]
           },
           options: { responsive: true, maintainAspectRatio: false }
         });
@@ -1437,7 +1593,7 @@ async function loadMetrics() {
           type: 'pie',
           data: {
             labels: viewLabels.map(l => l.replace('.html','').toUpperCase()),
-            datasets: [{ data: viewData, backgroundColor: ['#C5A866', '#1A1A1A', '#e5e7eb', '#888888', '#333333'] }]
+            datasets: [{ data: viewData, backgroundColor: ['var(--primary, #7A1028)', '#1A1A1A', '#e5e7eb', '#888888', '#333333'] }]
           },
           options: { responsive: true, maintainAspectRatio: false }
         });

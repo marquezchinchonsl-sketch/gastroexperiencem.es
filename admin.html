@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin - GastroExperience</title>
+  <title>MasReservas Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -26,9 +26,10 @@
   
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>GastroAdmin</h1>
-      <p>Premium SaaS</p>
+    <div class="sidebar-header sidebar-logo-area">
+      <img src="logo-masreservas.jpeg" alt="MasReservas" class="admin-logo-img">
+      <h1>MasReservas</h1>
+      <p>Panel de Control</p>
     </div>
     
     <nav class="admin-nav">
@@ -64,9 +65,9 @@
     <main class="dashboard-container">
 
       <!-- â•â• ONBOARDING SAAS â•â• -->
-      <div id="onboarding-widget" class="section-card" style="display:none; background: linear-gradient(135deg, var(--surface), var(--surface-2)); border-left: 4px solid var(--gold); border-radius:12px;">
+      <div id="onboarding-widget" class="section-card" style="display:none; background: linear-gradient(135deg, var(--surface), var(--surface-2)); border-left: 4px solid var(--primary); border-radius:12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
-          <h2 style="margin:0; font-size:1.2rem;"><i class="fas fa-rocket" style="color:var(--gold);"></i> Guía de Configuración</h2>
+          <h2 style="margin:0; font-size:1.2rem;"><i class="fas fa-rocket" style="color:var(--primary);"></i> Guía de Configuración</h2>
           <span id="onboarding-progress" style="font-weight:600; color:var(--text-dim); font-size:0.9rem; background:white; padding:4px 10px; border-radius:20px; box-shadow:var(--shadow-sm);">0/3 completados</span>
         </div>
         <div style="display:flex; gap: 16px; flex-wrap: wrap;">
@@ -171,7 +172,7 @@
             <button id="clear-btn" class="btn-danger"><i class="fas fa-trash"></i> Bloquear Día</button>
           </div>
           <div style="display:flex; gap:12px; align-items:center;">
-            <input type="text" id="search-reservations" placeholder="Buscar cliente o tfno..." style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; width: 200px; outline: none; transition: 0.2s;" onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+            <input type="text" id="search-reservations" placeholder="Buscar cliente o tfno..." style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; width: 200px; outline: none; transition: 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
             <button id="view-all-btn" class="btn-warning"><i class="fas fa-clock"></i> Pendientes</button>
             <button id="view-confirmed-btn" class="btn-success"><i class="fas fa-check-circle"></i> Confirmadas</button>
             <button id="add-manual-res-btn" class="btn-primary"><i class="fas fa-plus"></i> Nueva Reserva</button>
@@ -276,7 +277,7 @@
           <div id="categories-list" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;"></div>
           <div style="display:flex; gap:16px; flex-wrap:wrap; padding-top:16px; border-top:1px solid var(--border);">
             <button id="add-category-btn" class="btn-surface" style="border:1px solid var(--border); padding:12px 20px;"><i class="fas fa-plus"></i> Nueva Categoría</button>
-            <button id="ai-generate-menu-btn" class="btn-primary" style="background:#000; color:#fff; border:none; padding:12px 20px;"><i class="fas fa-magic" style="color:var(--gold);"></i> Generar con IA</button>
+            <button id="ai-generate-menu-btn" class="btn-primary" style="background:#000; color:#fff; border:none; padding:12px 20px;"><i class="fas fa-magic" style="color:var(--primary);"></i> Generar con IA</button>
           </div>
         </div>
       </div>
@@ -285,7 +286,7 @@
       <div id="tab-tables" class="tab-content">
         <div class="dashboard-controls" style="justify-content:space-between;">
           <div>
-            <h2 style="font-size:1.4rem; font-weight:600;"><i class="fas fa-chair" style="color:var(--gold);"></i> Editor del Plano de Mesas</h2>
+            <h2 style="font-size:1.4rem; font-weight:600;"><i class="fas fa-chair" style="color:var(--primary);"></i> Editor del Plano de Mesas</h2>
             <p style="font-size:0.9rem; color:var(--text-dim);">Dibuja tu restaurante. Arrastra las mesas para organizar tu sala.</p>
           </div>
           <div style="display:flex; gap:12px;">
@@ -294,7 +295,7 @@
           </div>
         </div>
         <div style="margin-bottom:24px;" class="section-card">
-          <h3 style="margin-bottom:4px; font-size:1.1rem;"><i class="fas fa-layer-group" style="color:var(--gold);"></i> Salas y Aforos</h3>
+          <h3 style="margin-bottom:4px; font-size:1.1rem;"><i class="fas fa-layer-group" style="color:var(--primary);"></i> Salas y Aforos</h3>
           <p style="font-size:0.88rem; color:var(--text-dim); margin-bottom:20px;">Define cada zona de tu local (Salón, Terraza, Barra...) y el aforo máximo. Las reservas se bloquean automáticamente cuando se alcanza el límite.</p>
           
           <!-- Formulario inline para añadir zona -->
@@ -473,12 +474,12 @@
           </p>
           
           <div style="background:var(--surface-2); padding:20px; border-radius:12px; border:1px solid var(--border); margin-bottom:24px;">
-            <h3 style="font-size:1.05rem; margin-bottom:12px;"><i class="fas fa-link" style="color:var(--gold);"></i> Opción 1: Enlace de Reserva Directo (Recomendado)</h3>
+            <h3 style="font-size:1.05rem; margin-bottom:12px;"><i class="fas fa-link" style="color:var(--primary);"></i> Opción 1: Enlace de Reserva Directo (Recomendado)</h3>
             <p style="font-size:0.85rem; line-height:1.6; margin-bottom:16px;">
               Copia tu enlace de reservas y pégalo en el campo <strong>"Enlace para reservar mesa"</strong> de tu ficha de Google Business Profile. Así, todas las reservas vendrán por aquí y la capacidad estará 100% sincronizada.
             </p>
             <div style="display:flex; gap:10px; align-items:center;">
-              <code id="google-res-url" style="flex:1; background:var(--surface); padding:10px; border-radius:6px; border:1px solid var(--border); font-size:0.85rem; color:var(--gold); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">https://gastroexperience.es/reservas.html?ref=google</code>
+              <code id="google-res-url" style="flex:1; background:var(--surface); padding:10px; border-radius:6px; border:1px solid var(--border); font-size:0.85rem; color:var(--primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">https://MasReservas.es/reservas.html?ref=google</code>
               <button onclick="copyToClipboard('google-res-url')" class="btn-surface" style="padding:10px 15px; border:1px solid var(--border);"><i class="fas fa-copy"></i> Copiar</button>
             </div>
           </div>
@@ -582,27 +583,59 @@
   </div>
 </div>
 <div id="import-modal" class="modal">
-  <div class="modal-content" style="max-width:540px;">
+  <div class="modal-content" style="max-width:560px;">
     <div class="modal-header">
-      <h2>Asistente de Importación IA</h2>
+      <h2>Importar Carta</h2>
       <button class="close-modal-btn" id="close-import-modal"><i class="fas fa-times"></i></button>
     </div>
-    <div style="margin-bottom:20px; color:var(--text-dim); font-size:0.95rem; line-height:1.5;">
-      Digitaliza tu carta en segundos. Pega el texto de tu menú actual (desde PDF, Word o Whatsapp). Nuestro algoritmo separará automáticamente los nombres de los precios.
+
+    <div style="display:flex; gap:0; margin-bottom:20px; border-bottom:2px solid var(--border);">
+      <button id="tab-supabase" class="import-tab active" onclick="switchImportTab('supabase')"><i class="fas fa-database"></i> Desde Supabase</button>
+      <button id="tab-ia" class="import-tab" onclick="switchImportTab('ia')"><i class="fas fa-robot"></i> Texto / IA</button>
     </div>
-    <div class="form-group">
-      <label>Contenido Bruto</label>
-      <textarea id="import-text" rows="10" placeholder="Ejemplo:
+
+    <!-- TAB: Desde Supabase -->
+    <div id="panel-supabase" style="display:block;">
+      <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom:16px;">
+        Importa los platos desde otro proyecto Supabase (por ejemplo, si el restaurante ya tenía carta en otra plataforma GastroExperience). Los platos se copiarán a tu restaurante actual.
+      </p>
+      <div class="form-group">
+        <label>URL del proyecto Supabase</label>
+        <input type="url" id="import-sb-url" placeholder="https://xxxxx.supabase.co" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <div class="form-group">
+        <label>Anon Key</label>
+        <input type="text" id="import-sb-key" placeholder="eyJhbGciOiJI..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);color:var(--text);font-family:monospace;">
+      </div>
+      <div class="form-group">
+        <label>Restaurant ID del proyecto origen</label>
+        <input type="text" id="import-sb-rid" placeholder="rest-nombre-fecha" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);color:var(--text);">
+      </div>
+      <div style="margin-top:20px;">
+        <button id="do-supabase-import" class="save-btn" style="background:var(--primary);color:#fff;"><i class="fas fa-file-import"></i> Importar Platos</button>
+      </div>
+      <div id="import-status" style="margin-top:12px; font-size:0.9rem; display:none;"></div>
+    </div>
+
+    <!-- TAB: Texto / IA -->
+    <div id="panel-ia" style="display:none;">
+      <div style="margin-bottom:20px; color:var(--text-dim); font-size:0.95rem; line-height:1.5;">
+        Digitaliza tu carta en segundos. Pega el texto de tu menú actual (desde PDF, Word o WhatsApp). El algoritmo separará automáticamente los nombres de los precios.
+      </div>
+      <div class="form-group">
+        <label>Contenido Bruto</label>
+        <textarea id="import-text" rows="10" placeholder="Ejemplo:
 Ensalada César 12.50
 Croquetas de Jamón (6 ud.) 9.00€
 Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-height:1.6;"></textarea>
-    </div>
-    <div class="form-group">
-      <label>Destino de la Importación</label>
-      <select id="import-category-select"></select>
-    </div>
-    <div style="margin-top:24px;">
-      <button id="process-import-btn" class="save-btn" style="background:var(--info); color:#fff;"><i class="fas fa-robot"></i> Procesar y Crear Elementos</button>
+      </div>
+      <div class="form-group">
+        <label>Categoría destino</label>
+        <select id="import-category-select"></select>
+      </div>
+      <div style="margin-top:24px;">
+        <button id="process-import-btn" class="save-btn" style="background:var(--info); color:#fff;"><i class="fas fa-robot"></i> Procesar y Crear Elementos</button>
+      </div>
     </div>
   </div>
 </div>
@@ -624,10 +657,10 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
     #ai-chat-btn { bottom: 84px; width: 52px; height: 52px; right: 20px; }
     #ai-chat-panel { bottom: 145px; right: 20px; }
   }
-  #ai-chat-btn:hover { transform: scale(1.1) rotate(-5deg); background: var(--gold); box-shadow: 0 12px 32px rgba(212,175,55,0.35); }
+  #ai-chat-btn:hover { transform: scale(1.1) rotate(-5deg); background: var(--primary); box-shadow: 0 12px 32px rgba(122,16,40,0.35); }
   #ai-chat-btn .ai-badge {
     position: absolute; top: -4px; right: -4px; width: 18px; height: 18px;
-    background: var(--gold); border-radius: 50%; border: 2px solid white;
+    background: var(--primary); border-radius: 50%; border: 2px solid white;
     font-size: 0.55rem; font-weight: 800; display: flex; align-items: center; justify-content: center;
     color: #000; animation: pulse-badge 2s infinite;
   }
@@ -649,7 +682,7 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
     background: var(--text); color: #fff;
     padding: 16px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   }
-  .chat-header-icon { width: 36px; height: 36px; background: var(--gold); border-radius: 50%;
+  .chat-header-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 50%;
     display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
   .chat-header-info h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 2px; }
   .chat-header-info p { font-size: 0.75rem; opacity: 0.6; }
@@ -661,12 +694,12 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
   /* API key setup */
   #ai-key-setup { padding: 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); flex-shrink: 0; display: none; }
   #ai-key-setup p { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
-  #ai-key-setup a { color: var(--gold); font-weight: 600; }
+  #ai-key-setup a { color: var(--primary); font-weight: 600; }
   #ai-key-setup .key-row { display: flex; gap: 8px; }
   #ai-key-input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
     font-size: 0.85rem; font-family: monospace; outline: none; background: var(--surface); color: var(--text); }
-  #ai-key-input:focus { border-color: var(--gold); }
-  #ai-save-key-btn { padding: 9px 14px; background: var(--gold); color: #fff; border: none;
+  #ai-key-input:focus { border-color: var(--primary); }
+  #ai-save-key-btn { padding: 9px 14px; background: var(--primary); color: #fff; border: none;
     border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
 
   /* Messages */
@@ -675,7 +708,7 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
   @keyframes msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .msg-ai { background: var(--surface-2); color: var(--text); border-bottom-left-radius: 4px; align-self: flex-start; }
   .msg-user { background: var(--text); color: #fff; border-bottom-right-radius: 4px; align-self: flex-end; }
-  .msg-ai strong { color: var(--gold); }
+  .msg-ai strong { color: var(--primary); }
   .msg-typing { background: var(--surface-2); padding: 12px 16px; border-radius: 14px; border-bottom-left-radius: 4px;
     align-self: flex-start; display: none; }
   .msg-typing span { display: inline-block; width: 7px; height: 7px; background: var(--text-muted);
@@ -689,19 +722,22 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
   .qp { background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px;
     padding: 5px 12px; font-size: 0.78rem; cursor: pointer; transition: all 0.2s; color: var(--text-dim);
     font-weight: 500; }
-  .qp:hover { background: var(--gold); color: #fff; border-color: var(--gold); }
+  .qp:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
   /* Input */
   .chat-input-row { display: flex; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
   #ai-chat-input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 10px;
     font-family: var(--font-body); font-size: 0.875rem; outline: none; resize: none; height: 42px;
     background: var(--surface-2); color: var(--text); transition: border-color 0.2s; }
-  #ai-chat-input:focus { border-color: var(--gold); background: var(--surface); }
+  #ai-chat-input:focus { border-color: var(--primary); background: var(--surface); }
   #ai-send-btn { width: 42px; height: 42px; background: var(--text); color: #fff; border: none;
     border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     font-size: 1rem; transition: all 0.2s; flex-shrink: 0; }
-  #ai-send-btn:hover { background: var(--gold); transform: scale(1.05); }
+  #ai-send-btn:hover { background: var(--primary); transform: scale(1.05); }
   #ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .import-tab { flex:1; padding:10px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-dim); cursor:pointer; font-size:0.95rem; font-weight:600; transition:all 0.2s; }
+  .import-tab:hover { color:var(--text); }
+  .import-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
 </style>
 
 <!-- Botón flotante -->

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GastroExperience — Panel de Control</title>
+  <title>MasReservas — Panel de Control</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -48,7 +48,7 @@
       font-family: 'Cormorant Garamond', serif;
       font-size: 1.4rem;
       font-weight: 600;
-      color: var(--gold);
+      color: var(--primary);
       letter-spacing: 0.05em;
     }
     .header-logo span { color: var(--text-dim); font-weight: 300; }
@@ -62,7 +62,7 @@
       border: 1px solid var(--border);
     }
     .user-pill { font-size: 0.82rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
-    .user-pill i { color: var(--gold); }
+    .user-pill i { color: var(--primary); }
 
     /* ── Layout ──────────────────────────────── */
     .layout { display: flex; min-height: calc(100vh - 64px); }
@@ -99,12 +99,12 @@
     .sidebar-link:hover, .sidebar-link.active {
       color: var(--text);
       background: var(--surface-2);
-      border-left-color: var(--gold);
+      border-left-color: var(--primary);
     }
     .sidebar-link i { width: 16px; text-align: center; font-size: 0.85rem; }
     .sidebar-link .badge {
       margin-left: auto;
-      background: var(--gold);
+      background: var(--primary);
       color: #000;
       font-size: 0.65rem;
       font-weight: 700;
@@ -123,7 +123,7 @@
       margin-bottom: 24px;
     }
     .page-header h1 { font-size: 1.5rem; font-weight: 600; }
-    .page-header h1 span { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; }
+    .page-header h1 span { color: var(--primary); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; }
     .page-header p { color: var(--text-dim); font-size: 0.82rem; margin-top: 3px; }
 
     /* ── Buttons ────────────────────────────── */
@@ -133,10 +133,10 @@
       font-weight: 600; font-family: 'Inter', sans-serif;
       cursor: pointer; transition: all 0.15s; border: none; text-decoration: none;
     }
-    .btn-primary { background: var(--gold); color: #000; }
+    .btn-primary { background: var(--primary); color: #000; }
     .btn-primary:hover { background: #d4b45a; }
     .btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
     .btn-sm { padding: 6px 12px; font-size: 0.72rem; }
 
     /* ── Client Cards ────────────────────────── */
@@ -168,7 +168,7 @@
       background: var(--surface-2); border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
       font-family: 'Cormorant Garamond', serif;
-      font-size: 1.1rem; font-weight: 600; color: var(--gold);
+      font-size: 1.1rem; font-weight: 600; color: var(--primary);
       flex-shrink: 0;
     }
     .card-info h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); }
@@ -197,12 +197,12 @@
     .card-row .icon.supabase { color: #3ecf8e; }
     .card-row .icon.github { color: #8b5cf6; }
     .card-row .icon.vercel { color: #fff; }
-    .card-row .icon.web { color: var(--gold); }
+    .card-row .icon.web { color: var(--primary); }
     .card-row .icon.email { color: var(--blue); }
     .card-row .icon.id { color: var(--purple); }
     .card-row .label { color: var(--text-dim); min-width: 70px; }
     .card-row .value { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .card-row .value a { color: var(--gold); text-decoration: none; }
+    .card-row .value a { color: var(--primary); text-decoration: none; }
     .card-row .value a:hover { text-decoration: underline; }
     .card-row .value.mono { font-family: 'Courier New', monospace; font-size: 0.72rem; }
 
@@ -256,7 +256,7 @@
       background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-size: 0.85rem; font-family: 'Inter', sans-serif;
     }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--gold); }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .modal-footer {
       padding: 14px 24px; border-top: 1px solid var(--border);
@@ -266,7 +266,7 @@
     /* ── Loading ────────────────────────────── */
     .spinner {
       display: inline-block; width: 14px; height: 14px;
-      border: 2px solid var(--border); border-top-color: var(--gold);
+      border: 2px solid var(--border); border-top-color: var(--primary);
       border-radius: 50%; animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -298,7 +298,7 @@
 
 <!-- Header -->
 <header class="header">
-  <div class="header-logo">GastroExperience <span>Control</span></div>
+  <div class="header-logo">MasReservas <span>Control</span></div>
   <div class="header-right">
     <div class="version">v1.0 — SaaS Panel</div>
     <div class="user-pill"><i class="fas fa-user-circle"></i> Adrian Marquez</div>
@@ -438,7 +438,7 @@
 <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal" style="max-width:580px;">
     <div class="modal-header">
-      <h2 id="settings-title"><i class="fas fa-sliders-h" style="color:var(--gold);margin-right:8px;"></i> Ajustes</h2>
+      <h2 id="settings-title"><i class="fas fa-sliders-h" style="color:var(--primary);margin-right:8px;"></i> Ajustes</h2>
       <button class="close-btn" onclick="closeSettings()">✕</button>
     </div>
     <div class="modal-body" id="settings-body">
@@ -514,7 +514,7 @@ const DASHBOARD_PASSWORD = 'gastro2026';
 if (sessionStorage.getItem('dash_auth') !== DASHBOARD_PASSWORD) {
   const entered = prompt('Contraseña del panel de control:');
   if (entered !== DASHBOARD_PASSWORD) {
-    document.body.innerHTML = '<div style="background:#0a0a0a;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;"><div style="text-align:center"><h1 style="color:#c9a84c;font-family:serif;font-size:2rem;margin-bottom:12px;">GastroExperience</h1><p style="color:#777;">Acceso restringido</p></div></div>';
+    document.body.innerHTML = '<div style="background:#0a0a0a;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;"><div style="text-align:center"><h1 style="color:#c9a84c;font-family:serif;font-size:2rem;margin-bottom:12px;">MasReservas</h1><p style="color:#777;">Acceso restringido</p></div></div>';
     throw new Error('Auth required');
   }
   sessionStorage.setItem('dash_auth', DASHBOARD_PASSWORD);
@@ -681,7 +681,7 @@ async function openSettings(id) {
   const c = allClients.find(x => x.id === id);
   if (!c) return;
 
-  document.getElementById('settings-title').innerHTML = '<i class="fas fa-sliders-h" style="color:var(--gold);margin-right:8px;"></i> ' + esc(c.name);
+  document.getElementById('settings-title').innerHTML = '<i class="fas fa-sliders-h" style="color:var(--primary);margin-right:8px;"></i> ' + esc(c.name);
 
   const body = document.getElementById('settings-body');
   body.innerHTML = `
@@ -706,7 +706,7 @@ async function openSettings(id) {
           <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-globe"></i></div>
           <div style="flex:1;">
             <div style="font-size:0.7rem;color:var(--text-dim);">Dominio</div>
-            <div style="font-size:0.85rem;">${c.domain ? `<a href="https://${esc(c.domain)}" target="_blank" style="color:var(--gold);">${esc(c.domain)}</a>` : '—'}</div>
+            <div style="font-size:0.85rem;">${c.domain ? `<a href="https://${esc(c.domain)}" target="_blank" style="color:var(--primary);">${esc(c.domain)}</a>` : '—'}</div>
           </div>
         </div>
         <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">

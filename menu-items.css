@@ -1,8 +1,8 @@
 /* menu-items.css — Tema Claro Premium */
 :root {
-  --gold:#b8893a; --gold-light:#d4a855; --gold-dim:rgba(184,137,58,0.10); --gold-glow:rgba(184,137,58,0.25);
+  --gold:#7A1028; --gold-light:#9a1433; --gold-dim:rgba(122,16,40,0.10); --gold-glow:rgba(122,16,40,0.25);
   --bg:#f8f6f2; --surface:#ffffff; --surface-2:#f3f0eb; --surface-3:#edeae4;
-  --border:rgba(0,0,0,0.08); --border-gold:rgba(184,137,58,0.28);
+  --border:rgba(0,0,0,0.08); --border-gold:rgba(122,16,40,0.28);
   --text:#1c1a17; --text-dim:#6b6560; --text-muted:#a8a29e;
   --font-display:'Cormorant Garamond',Georgia,serif; --font-body:'Outfit',sans-serif;
   --transition:cubic-bezier(0.23,1,0.32,1); --radius:14px;
@@ -20,7 +20,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
   border-bottom:1px solid var(--border);box-shadow:0 1px 0 rgba(0,0,0,0.04);
 }
 .header-logo img{height:44px;filter:none;opacity:0.9;}
-.nav-back{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--gold);font-size:0.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;transition:all 0.3s;}
+.nav-back{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--primary);font-size:0.75rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;transition:all 0.3s;}
 .nav-back i{transition:transform 0.3s;}
 .nav-back:hover{color:var(--gold-light);}
 .nav-back:hover i{transform:translateX(-3px);}
@@ -28,14 +28,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 /* SECTION INTRO */
 .section-intro{text-align:center;padding:52px 24px 36px;}
 .section-intro h1{font-family:var(--font-display);font-size:clamp(2.2rem,7vw,3.5rem);font-weight:300;letter-spacing:clamp(5px,2vw,12px);text-transform:uppercase;color:var(--text);}
-.section-intro .category-subtitle{font-family:var(--font-display);font-size:1rem;font-style:italic;color:var(--gold);margin-top:8px;opacity:0.85;}
+.section-intro .category-subtitle{font-family:var(--font-display);font-size:1rem;font-style:italic;color:var(--primary);margin-top:8px;opacity:0.85;}
 .section-intro .divider{display:flex;align-items:center;justify-content:center;gap:12px;margin:18px auto;opacity:0.4;}
-.section-intro .divider span{width:36px;height:1px;background:var(--gold);display:block;}
-.section-intro .divider i{color:var(--gold);font-size:0.45rem;}
+.section-intro .divider span{width:36px;height:1px;background:var(--primary);display:block;}
+.section-intro .divider i{color:var(--primary);font-size:0.45rem;}
 
 /* BÚSQUEDA */
 .search-bar-wrapper{max-width:420px;margin:0 auto 10px;position:relative;padding: 0 10px;}
-.search-bar-wrapper i{position:absolute;left:26px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:0.88rem;}
+.search-bar-wrapper i{position:absolute;left:26px;top:50%;transform:translateY(-50%);color:var(--primary);font-size:0.88rem;}
 #menu-search{width:100%;padding:13px 16px 13px 44px;background:var(--surface);border:1.5px solid var(--border);border-radius:50px;color:var(--text);font-family:var(--font-body);font-size:0.95rem;outline:none;transition:all 0.3s;box-shadow:var(--shadow);}
 #menu-search:focus{border-color:var(--border-gold);box-shadow:0 0 0 3px var(--gold-dim);background: #fff;}
 #menu-search::placeholder{color:var(--text-muted);}
@@ -79,9 +79,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 }
 
 .cat-nav-item.active {
-  background: var(--gold);
+  background: var(--primary);
   color: #fff;
-  border-color: var(--gold);
+  border-color: var(--primary);
   box-shadow: 0 4px 12px var(--gold-glow);
 }
 
@@ -90,7 +90,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .menu-content{max-width:700px;margin:0 auto;padding:0 24px 120px;}
 
 /* SUBCATEGORÍA */
-.subcategory-title{font-family:var(--font-display);font-size:1.15rem;font-weight:300;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin:44px 0 20px;padding-bottom:10px;border-bottom:1.5px solid var(--border-gold);}
+.subcategory-title{font-family:var(--font-display);font-size:1.15rem;font-weight:300;letter-spacing:4px;text-transform:uppercase;color:var(--primary);margin:44px 0 20px;padding-bottom:10px;border-bottom:1.5px solid var(--border-gold);}
 
 /* ITEM */
 .menu-item{display:flex;gap:18px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--border);transition:all 0.35s var(--transition);animation:item-in 0.4s var(--transition) both;}
@@ -105,16 +105,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-hei
 .item-body{flex:1;min-width:0;}
 .item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
 .item-name{font-size:1.08rem;font-weight:600;color:var(--text);transition:color 0.3s;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.25;flex:1;}
-.menu-item:hover .item-name{color:var(--gold);}
-.sugerencia-label{font-size:0.58rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);border:1px solid var(--gold);padding:3px 8px;border-radius:4px;white-space:nowrap;}
-.item-price{font-size:1.15rem;font-weight:600;color:var(--gold);white-space:nowrap;font-family:var(--font-display);margin-left:auto;}
+.menu-item:hover .item-name{color:var(--primary);}
+.sugerencia-label{font-size:0.58rem;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--primary);border:1px solid var(--primary);padding:3px 8px;border-radius:4px;white-space:nowrap;}
+.item-price{font-size:1.15rem;font-weight:600;color:var(--primary);white-space:nowrap;font-family:var(--font-display);margin-left:auto;}
 .item-info{font-size:0.88rem;color:var(--text-dim);margin-top:6px;font-weight:300;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 
 /* ALÉRGENOS */
 .item-allergens{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;align-items:center;}
 .allergens-label{font-size:0.62rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-muted);font-weight:600;}
 .allergen-badge{font-size:0.6rem;text-transform:uppercase;color:var(--text-dim);background:var(--surface-2);border:1px solid var(--border);padding:2px 7px;border-radius:4px;letter-spacing:0.3px;transition:all 0.2s;}
-.allergen-badge:hover{background:var(--gold-dim);border-color:var(--border-gold);color:var(--gold);}
+.allergen-badge:hover{background:var(--gold-dim);border-color:var(--border-gold);color:var(--primary);}
 body:not(.show-allergens) .item-allergens{display:none!important;}
 
 /* SIN RESULTADOS */
@@ -127,9 +127,9 @@ body:not(.show-allergens) .item-allergens{display:none!important;}
 .menu-footer{text-align:center;padding:32px 24px;font-size:0.68rem;letter-spacing:2px;color:var(--text-muted);text-transform:uppercase;border-top:1px solid var(--border);}
 
 /* BTN ALÉRGENOS */
-.toggle-allergens-btn{position:fixed;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:var(--surface);color:var(--gold);border:1.5px solid var(--border-gold);display:flex;justify-content:center;align-items:center;font-size:1.15rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:9999;transition:all 0.35s var(--transition);}
-.toggle-allergens-btn:hover{transform:scale(1.08) rotate(15deg);background:var(--gold);color:#fff;}
-.toggle-allergens-btn.active{background:var(--gold);color:#fff;}
+.toggle-allergens-btn{position:fixed;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:var(--surface);color:var(--primary);border:1.5px solid var(--border-gold);display:flex;justify-content:center;align-items:center;font-size:1.15rem;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:9999;transition:all 0.35s var(--transition);}
+.toggle-allergens-btn:hover{transform:scale(1.08) rotate(15deg);background:var(--primary);color:#fff;}
+.toggle-allergens-btn.active{background:var(--primary);color:#fff;}
 
 /* RESPONSIVE */
 @media(max-width:600px){

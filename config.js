@@ -1,16 +1,16 @@
 // ============================================================
-//  GastroExperience — config.js
+//  MasReservas — config.js
 //  ⚠️  ESTE ES EL ÚNICO ARCHIVO QUE CAMBIA POR CADA CLIENTE
 // ============================================================
 
 const APP_CONFIG = {
 
   // ── 1. IDENTIDAD DEL NEGOCIO ────────────────────────────
-  barName:    "MI RESTAURANTE",
-  barTagline: "Gastrobar · Cocina de Mercado",
-  barAddress: "Calle Ejemplo, 1",
-  barCity:    "Madrid",
-  barPhone:   "600 000 000",
+  barName:    "Restaurante El Mar",
+  barTagline: "Mariscos y Cocina Mediterránea",
+  barAddress: "Passeig Marítim, 42",
+  barCity:    "Barcelona",
+  barPhone:   "93 123 45 67",
   barPhone2:  "",
 
   // ── 2. REDES SOCIALES (dejar "" si no aplica) ───────────
@@ -20,7 +20,7 @@ const APP_CONFIG = {
   whatsapp:     "",
 
   // ── 3. URL PÚBLICA DEL SITIO (para el QR) ──────────────
-  siteUrl: "https://gastroexperience.es",
+  siteUrl: "https://MasReservas.es",
 
   // ── 4. BASE DE DATOS SUPABASE ──────────────────────────
   supabaseUrl: "https://xornvhqqjovcucpuqgoo.supabase.co",
@@ -31,8 +31,8 @@ const APP_CONFIG = {
 
   // ── 6. ZONAS DEL LOCAL ─────────────────────────────────
   zones: [
-    { id: "interior", title: "Interior",  capacity: 20 },
-    { id: "terraza",  title: "Terraza",   capacity: 30 },
+    { id: "interior", title: "Interior",  capacity: 24 },
+    { id: "terraza",  title: "Terraza",   capacity: 18 },
   ],
 
   // ── 7. CATEGORÍAS DE LA CARTA ──────────────────────────

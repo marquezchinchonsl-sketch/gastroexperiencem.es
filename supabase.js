@@ -1,4 +1,4 @@
-// supabase.js — GastroExperience
+// supabase.js — MasReservas
 // Carga Supabase como ES Module para evitar conflictos de global
 // Si ya está definido, no cargar
 if (typeof window.supabase !== 'undefined') {
