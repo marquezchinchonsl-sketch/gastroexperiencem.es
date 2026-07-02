@@ -22,11 +22,11 @@ module.exports = async function handler(req, res) {
     res.status(400).json({ ok: false, error: 'Missing fields' }); return;
   }
 
-  const GH_TOKEN = proces…KEN;
-  const VERCEL_TOKEN = proces…KEN;
+  const GH_TOKEN = process.env.GH_TOKEN;
+  const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
   const TEMPLATE_REPO = 'marquezchinchonsl-sketch/gastroexperience-template';
   const SUPABASE_URL = 'https://xornvhqqjovcucpuqgoo.supabase.co';
-  const SUPABASE_KEY = proces…_KEY;
+  const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
   const slug = domain.replace(/[^a-z0-9]/gi, '-').toLowerCase();
   const repoName = `gastroexperiencem-${slug}`;
   const newRepoFullName = `marquezchinchonsl-sketch/${repoName}`;
