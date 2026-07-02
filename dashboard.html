@@ -3,887 +3,959 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MasReservas — Panel de Control</title>
+  <title>MasReservas — Command Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface-2: #1c1c1c;
-      --surface-3: #222;
-      --border: #2a2a2a;
-      --gold: #c9a84c;
-      --gold-dim: #8a7234;
-      --text: #f5f0e8;
-      --text-dim: #777;
-      --green: #4ade80;
-      --red: #f87171;
-      --blue: #60a5fa;
-      --purple: #a78bfa;
+      --bg: #07090c; --sidebar: #0b1016; --surface: #0f1822; --surface-2: #14202e; --surface-3: #1a2b3d;
+      --border: #1e3048; --border-2: #2a4060;
+      --gold: #d4a843; --gold-dim: rgba(212,168,67,0.15); --gold-glow: rgba(212,168,67,0.4);
+      --text: #d8e4f0; --text-dim: #5a7a9a; --text-muted: #2e4860;
+      --green: #1fd97a; --green-dim: rgba(31,217,122,0.12); --green-glow: rgba(31,217,122,0.3);
+      --red: #f05252; --red-dim: rgba(240,82,82,0.12); --red-glow: rgba(240,82,82,0.3);
+      --yellow: #f5b82f; --yellow-dim: rgba(245,184,47,0.12);
+      --blue: #4a9eff; --blue-dim: rgba(74,158,255,0.12);
+      --purple: #b07af5; --cyan: #07c6d4;
     }
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); }
 
-    /* ── Header ─────────────────────────────── */
-    .header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 32px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header-logo {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.4rem;
-      font-weight: 600;
-      color: var(--primary);
-      letter-spacing: 0.05em;
-    }
-    .header-logo span { color: var(--text-dim); font-weight: 300; }
-    .header-right { display: flex; align-items: center; gap: 16px; }
-    .version {
-      font-size: 0.68rem;
-      color: var(--text-dim);
-      background: var(--surface-2);
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-    }
-    .user-pill { font-size: 0.82rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
-    .user-pill i { color: var(--primary); }
+    /* ── Layout ──────────────────────────────────────────── */
+    .cc { display: flex; flex-direction: column; height: 100vh; }
 
-    /* ── Layout ──────────────────────────────── */
-    .layout { display: flex; min-height: calc(100vh - 64px); }
+    /* ── Top bar ─────────────────────────────────────────── */
+    .topbar {
+      height: 58px; background: var(--sidebar); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0;
+    }
+    .logo {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; font-weight: 600;
+      color: var(--gold); letter-spacing: 0.05em; flex-shrink: 0;
+    }
+    .logo span { color: var(--text-dim); font-weight: 300; }
+    .top-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+    .topbar-title { font-size: 0.75rem; color: var(--text-dim); }
+    .topbar-stats { display: flex; gap: 20px; margin-left: auto; }
+    .tstat { display: flex; align-items: center; gap: 7px; font-size: 0.72rem; }
+    .tstat .ts-val { font-weight: 700; font-family: 'Space Mono', monospace; }
+    .tstat .ts-val.g { color: var(--green); }
+    .tstat .ts-val.r { color: var(--red); }
+    .tstat .ts-val.y { color: var(--yellow); }
+    .tstat .ts-label { color: var(--text-dim); }
+    .live-badge { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; font-weight: 700; color: var(--green); letter-spacing: 0.1em; }
+    .live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.85)} }
+    .clock { font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--text-dim); }
 
-    /* ── Sidebar ─────────────────────────────── */
-    .sidebar {
-      width: 220px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      padding: 20px 0;
-      flex-shrink: 0;
-    }
-    .sidebar-section { margin-bottom: 28px; }
-    .sidebar-title {
-      font-size: 0.62rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-dim);
-      padding: 0 20px;
-      margin-bottom: 6px;
-    }
-    .sidebar-link {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 20px;
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      cursor: pointer;
-      transition: all 0.15s;
-      border-left: 3px solid transparent;
-      text-decoration: none;
-    }
-    .sidebar-link:hover, .sidebar-link.active {
-      color: var(--text);
-      background: var(--surface-2);
-      border-left-color: var(--primary);
-    }
-    .sidebar-link i { width: 16px; text-align: center; font-size: 0.85rem; }
-    .sidebar-link .badge {
-      margin-left: auto;
-      background: var(--primary);
-      color: #000;
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 10px;
-    }
+    /* ── Body ───────────────────────────────────────────── */
+    .body { display: flex; flex: 1; overflow: hidden; }
 
-    /* ── Main ───────────────────────────────── */
-    .main { flex: 1; padding: 28px 32px; overflow-y: auto; }
-
-    /* ── Page Header ─────────────────────────── */
-    .page-header {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      margin-bottom: 24px;
-    }
-    .page-header h1 { font-size: 1.5rem; font-weight: 600; }
-    .page-header h1 span { color: var(--primary); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 300; }
-    .page-header p { color: var(--text-dim); font-size: 0.82rem; margin-top: 3px; }
-
-    /* ── Buttons ────────────────────────────── */
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 16px; border-radius: 8px; font-size: 0.8rem;
-      font-weight: 600; font-family: 'Inter', sans-serif;
-      cursor: pointer; transition: all 0.15s; border: none; text-decoration: none;
-    }
-    .btn-primary { background: var(--primary); color: #000; }
-    .btn-primary:hover { background: #d4b45a; }
-    .btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
-    .btn-sm { padding: 6px 12px; font-size: 0.72rem; }
-
-    /* ── Client Cards ────────────────────────── */
-    .clients-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-      gap: 18px;
-    }
-    .client-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+    /* ── Left sidebar (restaurant list) ──────────────────── */
+    .sidebar-left {
+      width: 280px; flex-shrink: 0; background: var(--sidebar);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
       overflow: hidden;
-      transition: border-color 0.2s;
     }
-    .client-card:hover { border-color: var(--gold-dim); }
+    .sb-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .sb-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .sb-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); font-weight: 600; }
+    .sb-count { font-size: 0.62rem; color: var(--text-muted); background: var(--surface); padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border); }
+    .sb-search { position: relative; }
+    .sb-search input {
+      width: 100%; padding: 7px 10px 7px 30px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text); font-size: 0.75rem; transition: border-color 0.2s;
+    }
+    .sb-search input:focus { outline: none; border-color: var(--gold); }
+    .sb-search input::placeholder { color: var(--text-muted); }
+    .sb-search i { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.7rem; }
+    .sb-filters { display: flex; gap: 4px; padding: 8px 0; flex-wrap: wrap; }
+    .filter-chip {
+      padding: 3px 8px; border-radius: 5px; font-size: 0.62rem; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: none; color: var(--text-dim);
+      transition: all 0.15s; display: flex; align-items: center; gap: 4px;
+    }
+    .filter-chip:hover { border-color: var(--gold-dim); color: var(--text); }
+    .filter-chip.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+    .filter-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-    /* Card header */
-    .card-header {
-      padding: 18px 20px 14px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+    .sb-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
+    .sb-list::-webkit-scrollbar { width: 3px; }
+    .sb-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .rest-item {
+      padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s;
+      margin-bottom: 4px; border: 1px solid transparent; position: relative; overflow: hidden;
     }
-    .card-header-left { display: flex; align-items: center; gap: 14px; }
-    .card-avatar {
-      width: 44px; height: 44px; border-radius: 10px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.1rem; font-weight: 600; color: var(--primary);
+    .rest-item:hover { background: var(--surface-2); }
+    .rest-item.selected { background: var(--surface-2); border-color: var(--gold); }
+    .rest-item.selected::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+    .rest-item.offline-item { opacity: 0.6; }
+    .rest-item-name { font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .rest-item-city { font-size: 0.65rem; color: var(--text-dim); margin-top: 2px; }
+    .rest-item-badges { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+    .mini-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.58rem; font-weight: 700; }
+    .mini-badge.ok { background: var(--green-dim); color: var(--green); }
+    .mini-badge.err { background: var(--red-dim); color: var(--red); }
+    .mini-badge.warn { background: var(--yellow-dim); color: var(--yellow); }
+    .mini-badge.neutral { background: var(--surface-3); color: var(--text-dim); }
+    .rest-item-metrics { display: flex; gap: 10px; margin-top: 5px; }
+    .rest-item-metric { font-size: 0.65rem; color: var(--text-dim); display: flex; align-items: center; gap: 3px; }
+    .rest-item-metric .val { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--text); }
+    .rest-item-metric .val.green { color: var(--green); }
+    .rest-item-metric .val.yellow { color: var(--yellow); }
+    .rest-item-metric .val.red { color: var(--red); }
+
+    /* ── Right panel (detail) ────────────────────────────── */
+    .detail-panel {
+      flex: 1; overflow-y: auto; padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .detail-panel::-webkit-scrollbar { width: 4px; }
+    .detail-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .empty-detail {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--text-dim); text-align: center; gap: 12px;
+    }
+    .empty-detail i { font-size: 3.5rem; opacity: 0.1; }
+    .empty-detail h3 { font-size: 1rem; color: var(--text); font-weight: 500; }
+    .empty-detail p { font-size: 0.82rem; max-width: 300px; line-height: 1.5; }
+
+    /* ── Detail header ───────────────────────────────────── */
+    .detail-header { display: flex; align-items: flex-start; gap: 16px; }
+    .detail-avatar {
+      width: 56px; height: 56px; border-radius: 12px; background: var(--surface-2);
+      border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+      font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 600; color: var(--gold);
       flex-shrink: 0;
     }
-    .card-info h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); }
-    .card-info .card-city { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
-    .status-pill {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 9px; border-radius: 20px; font-size: 0.68rem; font-weight: 600;
-    }
-    .status-pill.active { background: rgba(74,222,128,0.12); color: var(--green); }
-    .status-pill.pending { background: rgba(251,191,36,0.12); color: var(--yellow); }
-    .status-pill.inactive { background: rgba(248,113,113,0.12); color: var(--red); }
-    .status-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .detail-title { flex: 1; min-width: 0; }
+    .detail-title h1 { font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .detail-title h1 .name { }
+    .detail-title .meta { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; flex-wrap: wrap; }
+    .detail-title .meta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-muted); }
+    .detail-actions { display: flex; gap: 7px; flex-shrink: 0; }
 
-    /* Card body */
-    .card-body { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
-    .card-row {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 0.78rem; min-height: 28px;
+    /* ── Status bar ──────────────────────────────────────── */
+    .status-bar {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 18px; display: flex; gap: 0; flex-wrap: wrap;
     }
-    .card-row .icon {
-      width: 28px; height: 28px; border-radius: 7px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text-dim); font-size: 0.78rem; flex-shrink: 0;
-    }
-    .card-row .icon.supabase { color: #3ecf8e; }
-    .card-row .icon.github { color: #8b5cf6; }
-    .card-row .icon.vercel { color: #fff; }
-    .card-row .icon.web { color: var(--primary); }
-    .card-row .icon.email { color: var(--blue); }
-    .card-row .icon.id { color: var(--purple); }
-    .card-row .label { color: var(--text-dim); min-width: 70px; }
-    .card-row .value { color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .card-row .value a { color: var(--primary); text-decoration: none; }
-    .card-row .value a:hover { text-decoration: underline; }
-    .card-row .value.mono { font-family: 'Courier New', monospace; font-size: 0.72rem; }
+    .sb-cell { flex: 1; min-width: 100px; padding: 0 14px; text-align: center; border-right: 1px solid var(--border); }
+    .sb-cell:first-child { padding-left: 0; }
+    .sb-cell:last-child { border-right: none; }
+    .sb-cell .sb-label { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 4px; }
+    .sb-cell .sb-value { font-family: 'Space Mono', monospace; font-size: 1.1rem; font-weight: 700; }
+    .sb-cell .sb-value.gold { color: var(--gold); }
+    .sb-cell .sb-value.green { color: var(--green); }
+    .sb-cell .sb-value.yellow { color: var(--yellow); }
+    .sb-cell .sb-value.red { color: var(--red); }
+    .sb-cell .sb-sub { font-size: 0.6rem; color: var(--text-dim); margin-top: 2px; }
 
-    /* Card footer */
-    .card-footer {
-      padding: 12px 20px;
-      border-top: 1px solid var(--border);
-      display: flex; gap: 8px;
-      background: var(--surface-2);
+    /* ── Backend health card ─────────────────────────────── */
+    .backend-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 20px;
     }
-    .card-footer .btn { flex: 1; justify-content: center; font-size: 0.75rem; padding: 8px; }
+    .backend-card h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 12px; display: flex; align-items: center; gap: 7px; }
+    .backend-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+    .be-item {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+    }
+    .be-icon { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; flex-shrink: 0; }
+    .be-icon.ok { background: var(--green-dim); color: var(--green); }
+    .be-icon.err { background: var(--red-dim); color: var(--red); }
+    .be-icon.warn { background: var(--yellow-dim); color: var(--yellow); }
+    .be-info { flex: 1; min-width: 0; }
+    .be-info .be-name { font-size: 0.72rem; font-weight: 600; }
+    .be-info .be-val { font-size: 0.65rem; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+    .be-info .be-val.ok { color: var(--green); }
+    .be-info .be-val.err { color: var(--red); }
+    .be-info .be-val.warn { color: var(--yellow); }
 
-    /* ── Empty state ─────────────────────────── */
-    .empty-state {
-      text-align: center; padding: 60px 20px; color: var(--text-dim);
+    /* ── Alerts card ──────────────────────────────────────── */
+    .alerts-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden;
     }
-    .empty-state i { font-size: 3rem; margin-bottom: 14px; opacity: 0.25; }
-    .empty-state h3 { font-size: 1rem; color: var(--text); margin-bottom: 7px; }
-    .empty-state p { font-size: 0.82rem; }
+    .alerts-card-header {
+      padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); transition: background 0.15s;
+    }
+    .alerts-card-header:hover { background: var(--surface-2); }
+    .alerts-card-header h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); display: flex; align-items: center; gap: 7px; }
+    .alerts-card-header .count { padding: 1px 7px; border-radius: 10px; font-size: 0.6rem; font-weight: 700; }
+    .alerts-card-header .count.all-ok { background: var(--green-dim); color: var(--green); }
+    .alerts-card-header .count.has-warn { background: var(--yellow-dim); color: var(--yellow); }
+    .alerts-card-header .count.has-err { background: var(--red-dim); color: var(--red); }
+    .alerts-list { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .alerts-list.open { max-height: 600px; overflow-y: auto; }
+    .alerts-list::-webkit-scrollbar { width: 3px; }
+    .alerts-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .alert-item { display: flex; align-items: flex-start; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-item:hover { background: var(--surface-2); }
+    .alert-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; flex-shrink: 0; margin-top: 1px; }
+    .alert-icon.err { background: var(--red-dim); color: var(--red); }
+    .alert-icon.warn { background: var(--yellow-dim); color: var(--yellow); }
+    .alert-icon.info { background: var(--blue-dim); color: var(--blue); }
+    .alert-icon.ok { background: var(--green-dim); color: var(--green); }
+    .alert-content { flex: 1; min-width: 0; }
+    .alert-content .ac-title { font-size: 0.8rem; font-weight: 600; }
+    .alert-content .ac-title.err { color: var(--red); }
+    .alert-content .ac-title.warn { color: var(--yellow); }
+    .alert-content .ac-title.ok { color: var(--green); }
+    .alert-content .ac-meta { font-size: 0.68rem; color: var(--text-dim); margin-top: 2px; }
+    .alert-time { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--text-muted); white-space: nowrap; margin-top: 3px; }
+    .alerts-empty { padding: 24px 20px; text-align: center; color: var(--text-dim); font-size: 0.78rem; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .alerts-empty i { font-size: 1.5rem; color: var(--green); opacity: 0.7; }
 
-    /* ── Modal ──────────────────────────────── */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.72); z-index: 1000;
-      align-items: center; justify-content: center;
-    }
-    .modal-overlay.show { display: flex; }
-    .modal {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
-    }
-    .modal-header {
-      padding: 20px 24px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .modal-header h2 { font-size: 1rem; }
-    .close-btn {
-      width: 30px; height: 30px; border-radius: 7px;
-      background: var(--surface-2); border: none; color: var(--text-dim);
-      cursor: pointer; font-size: 0.9rem; line-height: 1;
-    }
-    .close-btn:hover { color: var(--text); }
-    .modal-body { padding: 22px 24px; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label {
-      display: block; font-size: 0.7rem; color: var(--text-dim);
-      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px;
-    }
-    .form-group input, .form-group select {
-      width: 100%; padding: 9px 13px;
-      background: var(--surface-2); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); font-size: 0.85rem; font-family: 'Inter', sans-serif;
-    }
-    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .modal-footer {
-      padding: 14px 24px; border-top: 1px solid var(--border);
-      display: flex; justify-content: flex-end; gap: 8px;
-    }
+    /* ── Trend chart ──────────────────────────────────────── */
+    .trend-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+    .trend-card h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .trend-chart-wrap { position: relative; }
+    .trend-chart { display: flex; align-items: flex-end; gap: 4px; height: 100px; }
+    .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+    .trend-col-bar { width: 100%; border-radius: 3px 3px 0 0; transition: opacity 0.2s; cursor: pointer; position: relative; min-height: 3px; }
+    .trend-col-bar:hover { opacity: 0.8; }
+    .trend-col-bar .tip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--surface-3); border: 1px solid var(--border); border-radius: 4px; padding: 3px 7px; font-size: 0.6rem; white-space: nowrap; z-index: 10; color: var(--text); margin-bottom: 4px; }
+    .trend-col-bar:hover .tip { display: block; }
+    .trend-col-label { font-size: 0.58rem; color: var(--text-dim); text-align: center; }
+    .trend-col-label.today { color: var(--gold); font-weight: 700; }
+    .trend-legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+    .trend-legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.65rem; color: var(--text-dim); }
+    .trend-legend-item .dot { width: 8px; height: 8px; border-radius: 2px; }
 
-    /* ── Loading ────────────────────────────── */
-    .spinner {
-      display: inline-block; width: 14px; height: 14px;
-      border: 2px solid var(--border); border-top-color: var(--primary);
-      border-radius: 50%; animation: spin 0.8s linear infinite;
+    /* ── Detail metrics grid ─────────────────────────────── */
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .metric-tile {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; transition: border-color 0.2s;
     }
+    .metric-tile:hover { border-color: var(--gold-dim); }
+    .metric-tile .mt-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+    .metric-tile .mt-value { font-family: 'Space Mono', monospace; font-size: 1.25rem; font-weight: 700; }
+    .metric-tile .mt-value.green { color: var(--green); }
+    .metric-tile .mt-value.yellow { color: var(--yellow); }
+    .metric-tile .mt-value.red { color: var(--red); }
+    .metric-tile .mt-value.gold { color: var(--gold); }
+    .metric-tile .mt-value.blue { color: var(--blue); }
+    .metric-tile .mt-sub { font-size: 0.62rem; color: var(--text-dim); margin-top: 3px; }
+
+    /* ── Quick actions ────────────────────────────────────── */
+    .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .qa-btn { display: flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); background: var(--surface); color: var(--text); text-decoration: none; }
+    .qa-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+    .qa-btn.danger:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .qa-btn i { font-size: 0.85em; }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 7px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; text-decoration: none; }
+    .btn-primary { background: var(--gold); color: #000; }
+    .btn-primary:hover { background: #e0b84e; }
+    .btn-ghost { background: var(--surface-2); color: var(--text); border-color: var(--border); }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-sm { padding: 5px 10px; font-size: 0.7rem; }
+    .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-overlay {
-      position: fixed; inset: 0; background: rgba(10,10,10,0.7); z-index: 2000;
-      display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
-    }
-    .loading-overlay.show { display: flex; }
-    .loading-overlay span { color: var(--text-dim); font-size: 0.82rem; }
 
-    /* ── Toast ───────────────────────────────── */
-    .toast-container { position: fixed; bottom: 22px; right: 22px; z-index: 3000; display: flex; flex-direction: column; gap: 7px; }
-    .toast {
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
-      padding: 11px 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 9px;
-      animation: slideIn 0.3s ease;
-    }
+    /* ── New client ───────────────────────────────────────── */
+    .new-client-form { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; max-width: 600px; }
+    .nc-header { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); font-weight: 600; background: var(--surface-2); }
+    .nc-body { padding: 18px 20px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); }
+    .form-group input, .form-group select { padding: 8px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.8rem; font-family: 'Inter', sans-serif; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--gold); }
+    .form-group input::placeholder { color: var(--text-muted); }
+    .form-group input.mono { font-family: 'Space Mono', monospace; font-size: 0.72rem; }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 6px; }
+    .toast { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; display: flex; align-items: center; gap: 8px; animation: slideIn 0.3s ease; }
     .toast.success { border-color: var(--green); }
     .toast.error { border-color: var(--red); }
-    @keyframes slideIn { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── Scrollbar global ────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
   </style>
 </head>
 <body>
 
-<div id="loading-overlay" class="loading-overlay">
-  <div class="spinner" style="width:28px;height:28px;border-width:3px;"></div>
-  <span id="loading-text">Cargando...</span>
-</div>
+<div class="cc">
 
-<!-- Header -->
-<header class="header">
-  <div class="header-logo">MasReservas <span>Control</span></div>
-  <div class="header-right">
-    <div class="version">v1.0 — SaaS Panel</div>
-    <div class="user-pill"><i class="fas fa-user-circle"></i> Adrian Marquez</div>
-  </div>
-</header>
-
-<!-- Layout -->
-<div class="layout">
-
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-title">Navegación</div>
-      <div class="sidebar-link active" data-page="clients" onclick="showPage('clients')">
-        <i class="fas fa-building"></i> Restaurantes
-        <span class="badge" id="badge-clients">0</span>
-      </div>
-      <div class="sidebar-link" data-page="new-client" onclick="showPage('new-client')">
-        <i class="fas fa-plus-circle"></i> Nuevo Cliente
-      </div>
+  <!-- Top bar -->
+  <header class="topbar">
+    <button class="btn btn-ghost btn-sm" id="btn-back" onclick="goBack()" style="display:none;margin-right:8px;"><i class="fas fa-arrow-left"></i> Volver</button><div class="logo">MasReservas <span>Command</span></div>
+    <div class="top-sep"></div>
+    <div class="topbar-title">Operations Center</div>
+    <div class="topbar-stats">
+      <div class="tstat"><span class="ts-val g" id="ts-online">—</span><span class="ts-label">online</span></div>
+      <div class="tstat"><span class="ts-val r" id="ts-offline">—</span><span class="ts-label">offline</span></div>
+      <div class="tstat"><span class="ts-val y" id="ts-alerts">—</span><span class="ts-label">alertas</span></div>
+      <div class="top-sep"></div>
+      <div class="tstat"><span class="ts-val" id="ts-reservas">—</span><span class="ts-label">reservas</span></div>
+      <div class="tstat"><span class="ts-val" id="ts-covers">—</span><span class="ts-label">cubiertos</span></div>
     </div>
-    <div class="sidebar-section">
-      <div class="sidebar-title">Acceso Rápido</div>
-      <a href="https://supabase.com/dashboard" target="_blank" class="sidebar-link">
-        <i class="fas fa-database"></i> Supabase
-      </a>
-      <a href="https://github.com/marquezchinchonsl-sketch" target="_blank" class="sidebar-link">
-        <i class="fab fa-github"></i> GitHub
-      </a>
-      <a href="https://vercel.com/dashboard" target="_blank" class="sidebar-link">
-        <i class="fas fa-rocket"></i> Vercel
-      </a>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-title">Sistema</div>
-      <div class="sidebar-link" style="cursor:default;">
-        <i class="fas fa-circle" style="color:var(--green);font-size:0.5rem;"></i> Operativo
-      </div>
-    </div>
-  </nav>
+    <div class="top-sep"></div>
+    <div class="live-badge">LIVE</div>
+    <div class="clock" id="clock">—</div>
+  </header>
 
-  <!-- Main -->
-  <main class="main">
+  <!-- Body -->
+  <div class="body">
 
-    <!-- Clients Page -->
-    <div id="page-clients">
-      <div class="page-header">
-        <div>
-          <h1>Restaurantes</h1>
-          <p id="clients-subtitle">Cargando...</p>
+    <!-- Left sidebar -->
+    <aside class="sidebar-left">
+      <div class="sb-header">
+        <div class="sb-header-top">
+          <span class="sb-title">Restaurantes</span>
+          <span class="sb-count" id="sb-count">0</span>
         </div>
-        <button class="btn btn-primary" onclick="openAddModal()">
-          <i class="fas fa-plus"></i> Nuevo Cliente
-        </button>
-      </div>
-
-      <div id="clients-grid" class="clients-grid">
-        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Cargando...</p></div>
-      </div>
-    </div>
-
-    <!-- New Client Page -->
-    <div id="page-new-client" style="display:none;">
-      <div class="page-header">
-        <div>
-          <h1>Nuevo <span>Cliente</span></h1>
-          <p>Añade un restaurante nuevo al SaaS</p>
+        <div class="sb-search">
+          <i class="fas fa-search"></i>
+          <input type="text" id="search-input" placeholder="Buscar restaurante..." oninput="filterRestaurants()">
         </div>
-        <button class="btn btn-ghost" onclick="showPage('clients')">
-          <i class="fas fa-arrow-left"></i> Volver
-        </button>
-      </div>
-
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:600px;">
-        <div style="padding:16px 22px;border-bottom:1px solid var(--border);font-size:0.85rem;font-weight:600;">
-          Datos del restaurante
+        <div class="sb-filters" id="sb-filters">
+          <button class="filter-chip active" onclick="setFilter('all')"><span class="dot"></span>Todos</button>
+          <button class="filter-chip" onclick="setFilter('alerts')"><span class="dot" style="color:var(--yellow)"></span>Alertas</button>
+          <button class="filter-chip" onclick="setFilter('offline')"><span class="dot" style="color:var(--red)"></span>Offline</button>
+          <button class="filter-chip" onclick="setFilter('ok')"><span class="dot" style="color:var(--green)"></span>OK</button>
         </div>
-        <div style="padding:22px;">
-          <form id="new-client-form" onsubmit="handleNewClient(event)">
-            <div class="form-row">
+      </div>
+      <div class="sb-list" id="sb-list">
+        <div style="padding:30px 10px;text-align:center;color:var(--text-dim);font-size:0.78rem;"><div class="spinner" style="margin:0 auto 8px;"></div>Cargando...</div>
+      </div>
+    </aside>
+
+    <!-- Right detail panel -->
+    <main class="detail-panel" id="detail-panel">
+      <div class="empty-detail" id="empty-detail">
+        <i class="fas fa-crosshairs"></i>
+        <h3>Selecciona un restaurante</h3>
+        <p>Selecciona un restaurante de la lista para ver sus métricas y estado en tiempo real.</p>
+      </div>
+      <div id="detail-content" style="display:none;"></div>
+      <div id="new-client-form" style="display:none;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <button class="btn btn-ghost btn-sm" onclick="goBack()"><i class="fas fa-arrow-left"></i> Volver</button>
+          <div>
+            <h2 style="font-size:1rem;font-weight:700;">Nuevo <span style="color:var(--gold);font-family:'Cormorant Garamond',serif;font-style:italic;">Cliente</span></h2>
+            <p style="font-size:0.72rem;color:var(--text-dim);margin-top:3px;">Crea un nuevo restaurante — deploy automático en Vercel</p>
+          </div>
+        </div>
+        <div class="new-client-form">
+          <div class="nc-header"><i class="fas fa-store"></i> Datos del restaurante</div>
+          <div class="nc-body">
+            <div class="form-grid">
               <div class="form-group">
-                <label>Nombre *</label>
-                <input type="text" id="nc-name" placeholder="Restaurante El Sol" required>
+                <label>Nombre del restaurante *</label>
+                <input id="nc-name" type="text" placeholder="Bar El Sol" required>
               </div>
               <div class="form-group">
                 <label>Ciudad *</label>
-                <input type="text" id="nc-city" placeholder="Barcelona" required>
+                <input id="nc-city" type="text" placeholder="Barcelona" required>
               </div>
-            </div>
-            <div class="form-row">
               <div class="form-group">
-                <label>Dominio</label>
-                <input type="text" id="nc-domain" placeholder="elsol.com">
+                <label>Dominio *</label>
+                <input id="nc-domain" type="text" placeholder="barelelsol.com" required style="font-size:0.75rem;">
               </div>
               <div class="form-group">
                 <label>Email admin *</label>
-                <input type="email" id="nc-email" placeholder="admin@elsol.com" required>
+                <input id="nc-email" type="email" placeholder="admin.com" required>
               </div>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Supabase URL *</label>
-                <input type="url" id="nc-supabase-url" placeholder="https://xxxx.supabase.co" required>
-              </div>
-              <div class="form-group">
-                <label>Supabase Anon Key *</label>
-                <input type="text" id="nc-supabase-key" placeholder="eyJhbGciOiJIUzI1..." required>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Repo GitHub</label>
-                <input type="text" id="nc-github" placeholder="marquezchinchonsl-sketch/elsol">
-              </div>
-              <div class="form-group">
-                <label>URL Vercel</label>
-                <input type="url" id="nc-vercel-url" placeholder="https://elsol.vercel.app">
-              </div>
-            </div>
-            <div style="margin-top:18px;display:flex;gap:10px;">
-              <button type="submit" class="btn btn-primary" id="nc-submit">
-                <i class="fas fa-plus"></i> Crear Cliente
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="submitNewClient()" id="nc-submit-btn">
+                <i class="fas fa-rocket"></i> <span id="nc-btn-text">Crear y Desplegar</span>
               </button>
-              <button type="button" class="btn btn-ghost" onclick="testConnection()">
-                <i class="fas fa-plug"></i> Probar conexión
+              <button class="btn btn-ghost" onclick="testNewClientConn()">
+                <i class="fas fa-plug"></i> Probar conexión BD
               </button>
             </div>
-          </form>
+            <div id="nc-status" style="margin-top:14px;display:none;"></div>
+            <div id="nc-output" style="margin-top:10px;font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--text-dim);white-space:pre-wrap;display:none;max-height:300px;overflow-y:auto;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:12px;"></div>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
 
-  </main>
-</div>
-
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay" onclick="if(event.target===this)closeSettings()">
-  <div class="modal" style="max-width:580px;">
-    <div class="modal-header">
-      <h2 id="settings-title"><i class="fas fa-sliders-h" style="color:var(--primary);margin-right:8px;"></i> Ajustes</h2>
-      <button class="close-btn" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-body" id="settings-body">
-      <!-- Dynamic content -->
-    </div>
   </div>
 </div>
 
-<!-- Add/Edit Modal -->
-<div id="client-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Nuevo Cliente</h2>
-      <button class="close-btn" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <input type="hidden" id="modal-client-id">
-      <div class="form-group">
-        <label>Nombre *</label>
-        <input type="text" id="m-name" required>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Ciudad</label>
-          <input type="text" id="m-city">
-        </div>
-        <div class="form-group">
-          <label>Status</label>
-          <select id="m-status">
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Dominio</label>
-        <input type="text" id="m-domain" placeholder="elsol.com">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Supabase URL</label>
-          <input type="url" id="m-supabase-url">
-        </div>
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="m-email">
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Repo GitHub</label>
-        <input type="text" id="m-github" placeholder="org/repo">
-      </div>
-      <div class="form-group">
-        <label>URL Vercel</label>
-        <input type="url" id="m-vercel-url">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveClient()">
-        <i class="fas fa-save"></i> Guardar
-      </button>
-    </div>
-  </div>
-</div>
+<div id="toast-container"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script>
-// ── Password ─────────────────────────────────────────────
-const DASHBOARD_PASSWORD = 'gastro2026';
-if (sessionStorage.getItem('dash_auth') !== DASHBOARD_PASSWORD) {
-  const entered = prompt('Contraseña del panel de control:');
-  if (entered !== DASHBOARD_PASSWORD) {
-    document.body.innerHTML = '<div style="background:#0a0a0a;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;"><div style="text-align:center"><h1 style="color:#c9a84c;font-family:serif;font-size:2rem;margin-bottom:12px;">MasReservas</h1><p style="color:#777;">Acceso restringido</p></div></div>';
-    throw new Error('Auth required');
+// ── Auth ──────────────────────────────────────────────────
+const PASS = 'gastro2026';
+(function() {
+  if (sessionStorage.getItem('cc_auth') !== PASS) {
+    const e = prompt('Command Center password:');
+    if (e !== PASS) {
+      document.body.innerHTML = '<div style="background:#07090c;height:100vh;display:flex;align-items:center;justify-content:center;"><div style="text-align:center"><h1 style="color:#d4a843;font-family:serif;font-size:2.2rem;margin-bottom:10px;">MasReservas</h1><p style="color:#5a7a9a;font-size:0.85rem;">Command Center — Restricted Access</p></div></div>';
+      throw new Error('auth');
+    }
+    sessionStorage.setItem('cc_auth', PASS);
   }
-  sessionStorage.setItem('dash_auth', DASHBOARD_PASSWORD);
-}
+})();
 
 // ── State ─────────────────────────────────────────────────
-let allClients = [];
+let allRestaurants = [];
+let selectedRestId = null;
+let currentFilter = 'all';
+let searchQuery = '';
+let refreshTimer = null;
 
-const db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+// ── Clock ─────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
 
 // ── Init ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', loadClients);
-
-async function loadClients() {
-  showLoading('Cargando clientes...');
-  const { data, error } = await db.from('clients').select('*').order('created_at', { ascending: false });
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  allClients = data || [];
-  renderClients();
-  document.getElementById('badge-clients').textContent = allClients.length;
+document.addEventListener('DOMContentLoaded', init);
+function init() {
+  if (!window.supabase || !window.APP_CONFIG) { setTimeout(init, 80); return; }
+  loadAllData();
+  refreshTimer = setInterval(loadAllData, 60000);
 }
 
-function renderClients() {
-  const grid = document.getElementById('clients-grid');
-  const sub = document.getElementById('clients-subtitle');
-  sub.textContent = `${allClients.length} restaurante${allClients.length !== 1 ? 's' : ''}`;
+async function loadAllData() {
+  try {
+    allRestaurants = await getAllRestaurants();
+    await Promise.allSettled(allRestaurants.map(r => loadRestaurantMetrics(r)));
+    computeAlerts();
+    updateTopStats();
+    renderSidebarList();
+    if (selectedRestId) {
+      const sel = allRestaurants.find(r => r.restaurant_id === selectedRestId);
+      if (sel) renderDetail(sel);
+    }
+  } catch(e) {
+    toast('Connection error: ' + e.message, 'error');
+  }
+}
 
-  if (!allClients.length) {
-    grid.innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><h3>Sin clientes</h3><p>Añade tu primer restaurante con el botón de arriba.</p></div>';
+// ── Read restaurants from Supabase ────────────────────────
+async function getAllRestaurants() {
+  const url = window.APP_CONFIG.supabaseUrl;
+  const key = window.APP_CONFIG.supabaseKey;
+  const res = await fetch(`${url}/rest/v1/settings?select=restaurant_id,key,value`, {
+    headers: { 'apikey': key, 'Content-Type': 'application/json' }
+  });
+  if (!res.ok) throw new Error('Supabase error ' + res.status);
+  const allSettings = await res.json();
+  const rids = [...new Set(allSettings.map(r => r.restaurant_id))];
+  const restaurants = [];
+  for (const rid of rids) {
+    const rows = allSettings.filter(s => s.restaurant_id === rid);
+    const cfg = {};
+    for (const row of rows) { try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; } }
+    const slug = cfg.subdomain || (cfg.bar_name || rid).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    restaurants.push({
+      restaurant_id: rid, name: cfg.bar_name || cfg.biz_name || rid, city: cfg.bar_city || '',
+      subdomain: slug, supabase_url: cfg.supabase_url || window.APP_CONFIG.supabaseUrl,
+      supabase_key: cfg.supabase_key || window.APP_CONFIG.supabaseKey,
+      domain: cfg.domain || '', email: cfg.email || '', status: cfg.status || 'active',
+      _cfg: cfg, _metrics: null, _bdStatus: 'loading', _bdLatency: null, _bdError: null,
+      _alerts: [], _loaded: false,
+    });
+  }
+  return restaurants;
+}
+
+// ── Load metrics per restaurant ────────────────────────────
+async function loadRestaurantMetrics(rest) {
+  const [bdResult, metrics] = await Promise.allSettled([
+    checkBackend(rest.supabase_url, rest.supabase_key),
+    fetchMetrics(rest.supabase_url, rest.supabase_key, rest.restaurant_id, 30),
+  ]);
+  const bd = bdResult.status === 'fulfilled' ? bdResult.value : { status: 'err', latency: null, error: 'timeout' };
+  rest._bdStatus = bd.status;
+  rest._bdLatency = bd.latency;
+  rest._bdError = bd.error || null;
+  rest._metrics = metrics.status === 'fulfilled' ? metrics.value : null;
+  rest._loaded = true;
+}
+
+async function checkBackend(url, key) {
+  const t0 = performance.now();
+  try {
+    const res = await fetch(`${url}/rest/v1/settings?key=***&id=eq.1&limit=1`, {
+      headers: { 'apikey': key, 'Content-Type': 'application/json' }
+    });
+    return { status: res.ok ? 'ok' : 'err', latency: Math.round(performance.now() - t0), error: res.ok ? null : 'HTTP ' + res.status };
+  } catch(e) { return { status: 'err', latency: null, error: e.message }; }
+}
+
+async function fetchMetrics(url, key, rid, days) {
+  const d = new Date(); d.setDate(d.getDate() - days);
+  let resData = [];
+  try {
+    const r = await fetch(`${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${d.toISOString().split('T')[0]}&select=id,date,time,people,status,source,name`, {
+      headers: { 'apikey': key, 'Content-Type': 'application/json' }
+    });
+    if (r.ok) resData = await r.json();
+  } catch(e) {}
+
+  const valid = resData.filter(r => r.status !== 'cancelled');
+  const confirmed = valid.filter(r => r.status === 'confirmed');
+  const pending = valid.filter(r => r.status === 'pending');
+  const completed = valid.filter(r => r.status === 'completed');
+  const cancelled = resData.filter(r => r.status === 'cancelled').length;
+  const covers = valid.reduce((s, r) => s + parseInt(r.people || 0), 0);
+  const web = resData.filter(r => r.source === 'web').length;
+  const phone = resData.filter(r => r.source === 'phone').length;
+  const today = new Date().toISOString().split('T')[0];
+  const todayCount = valid.filter(r => r.date === today).length;
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const yesterdayCount = valid.filter(r => r.date === yesterday).length;
+
+  // Weekly data (last 8 weeks)
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) {
+    const ws = new Date(); ws.setDate(ws.getDate() - (w * 7 + 6));
+    const we = new Date(ws); we.setDate(we.getDate() + 6);
+    const wsStr = ws.toISOString().split('T')[0];
+    const weStr = we.toISOString().split('T')[0];
+    const wkRes = resData.filter(r => r.date >= wsStr && r.date <= weStr && r.status !== 'cancelled');
+    weeks.push({ label: wsStr, total: wkRes.length, covers: wkRes.reduce((s, r) => s + parseInt(r.people || 0), 0), isCurrent: w === 0 });
+  }
+
+  const hourCount = {};
+  valid.forEach(r => { const h = (r.time || '14:00').split(':')[0]; hourCount[h] = (hourCount[h] || 0) + 1; });
+  const peakHour = Object.entries(hourCount).sort((a, b) => b[1] - a[1])[0];
+  const latest = [...resData].sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time))[0];
+
+  return { total: resData.length, valid: valid.length, covers, confirmed: confirmed.length, pending: pending.length, completed: completed.length, cancelled, web, phone, weeks, peakHour: peakHour ? peakHour[0] + ':00' : '—', latestRes: latest, todayCount, yesterdayCount, noRecentData: !resData.length };
+}
+
+// ── Compute alerts ─────────────────────────────────────────
+function computeAlerts() {
+  for (const r of allRestaurants) {
+    r._alerts = [];
+    if (!r._loaded) continue;
+    if (r._bdStatus === 'err') r._alerts.push({ s: 'err', i: 'fa-database', t: 'Backend offline', m: r._bdError || 'No responde' });
+    if (r._bdStatus === 'ok' && r._bdLatency > 1000) r._alerts.push({ s: 'warn', i: 'fa-gauge-high', t: 'Backend lento', m: `Latencia ${r._bdLatency}ms` });
+    if (r._metrics === null) r._alerts.push({ s: 'err', i: 'fa-circle-exclamation', t: 'Sin métricas', m: 'No se pudieron cargar datos' });
+    if (r._metrics?.noRecentData) r._alerts.push({ s: 'warn', i: 'fa-calendar-xmark', t: 'Sin reservas (30d)', m: '0 reservas en el periodo' });
+    if (r._metrics?.todayCount === 0) r._alerts.push({ s: 'warn', i: 'fa-calendar-day', t: 'Sin reservas hoy', m: r._metrics.yesterdayCount > 0 ? `Ayer: ${r._metrics.yesterdayCount}` : 'Sin actividad' });
+    if (r._metrics && r._metrics.total > 5) {
+      const rate = r._metrics.cancelled / r._metrics.total;
+      if (rate > 0.25) r._alerts.push({ s: 'err', i: 'fa-cancel', t: 'Cancelaciones altas', m: `${Math.round(rate * 100)}% (${r._metrics.cancelled}/${r._metrics.total})` });
+      else if (rate > 0.15) r._alerts.push({ s: 'warn', i: 'fa-cancel', t: 'Cancelaciones elevadas', m: `${Math.round(rate * 100)}%` });
+    }
+    if (r._metrics && r._metrics.confirmed === 0 && r._metrics.pending === 0 && r._metrics.valid > 0) r._alerts.push({ s: 'warn', i: 'fa-clock', t: 'Sin reservas confirmadas', m: 'Revisar demanda y aperturas' });
+    if (r._metrics && r._metrics.total > 3) {
+      const wr = r._metrics.web / r._metrics.total;
+      if (wr < 0.2) r._alerts.push({ s: 'warn', i: 'fa-globe', t: 'Poca reserva web', m: `${Math.round(wr * 100)}% online` });
+    }
+    if (!r._alerts.length) r._alerts.push({ s: 'ok', i: 'fa-check-circle', t: 'Todo operativo', m: 'Sin incidencias' });
+  }
+}
+
+// ── Top bar stats ──────────────────────────────────────────
+function updateTopStats() {
+  const online = allRestaurants.filter(r => r._bdStatus === 'ok').length;
+  const offline = allRestaurants.filter(r => r._bdStatus === 'err').length;
+  const allAlerts = allRestaurants.flatMap(r => r._alerts).filter(a => a.s !== 'ok').length;
+  const totalRes = allRestaurants.reduce((s, r) => s + (r._metrics?.valid || 0), 0);
+  const totalCovers = allRestaurants.reduce((s, r) => s + (r._metrics?.covers || 0), 0);
+  document.getElementById('ts-online').textContent = online;
+  document.getElementById('ts-offline').textContent = offline;
+  document.getElementById('ts-alerts').textContent = allAlerts;
+  document.getElementById('ts-reservas').textContent = totalRes.toLocaleString('es-ES');
+  document.getElementById('ts-covers').textContent = totalCovers.toLocaleString('es-ES');
+}
+
+// ── Sidebar list ──────────────────────────────────────────
+function filterRestaurants() {
+  searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+  renderSidebarList();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.filter-chip[onclick="setFilter('${f}')"]`)?.classList.add('active');
+  renderSidebarList();
+}
+
+function renderSidebarList() {
+  const filtered = allRestaurants.filter(r => {
+    if (currentFilter === 'alerts' && !r._alerts.some(a => a.s !== 'ok')) return false;
+    if (currentFilter === 'offline' && r._bdStatus !== 'err') return false;
+    if (currentFilter === 'ok' && (r._bdStatus !== 'ok' || r._alerts.some(a => a.s !== 'ok'))) return false;
+    if (searchQuery && !r.name.toLowerCase().includes(searchQuery) && !r.city.toLowerCase().includes(searchQuery)) return false;
+    return true;
+  });
+
+  document.getElementById('sb-count').textContent = filtered.length;
+
+  if (!filtered.length) {
+    document.getElementById('sb-list').innerHTML = '<div style="padding:30px 10px;text-align:center;color:var(--text-dim);font-size:0.78rem;">Sin resultados</div>';
     return;
   }
 
-  grid.innerHTML = allClients.map(c => {
-    const initial = (c.name || '?')[0].toUpperCase();
-    const domain = c.domain || '';
-    const supabaseUrl = c.supabase_url || '';
-    const github = c.github_repo || '';
-    const vercelUrl = c.vercel_url || '';
-    const email = c.email || '';
-    const rid = c.restaurant_id || '';
+  document.getElementById('sb-list').innerHTML = filtered.map(r => {
+    const bdClass = r._bdStatus === 'ok' ? 'ok' : r._bdStatus === 'err' ? 'err' : 'warn';
+    const errCount = r._alerts.filter(a => a.s === 'err').length;
+    const warnCount = r._alerts.filter(a => a.s === 'warn').length;
+    const m = r._metrics;
+    const selected = r.restaurant_id === selectedRestId ? ' selected' : '';
+    const offlineClass = r._bdStatus === 'err' ? ' offline-item' : '';
+    const fullDomain = r.domain || (r.subdomain ? r.subdomain + '.gastroexperiencem.es' : '');
 
-    return `<div class="client-card">
-      <div class="card-header">
-        <div class="card-header-left">
-          <div class="card-avatar">${initial}</div>
-          <div class="card-info">
-            <h3>${esc(c.name)}</h3>
-            <div class="card-city">${esc(c.city || 'Sin ciudad')} · alta ${formatDate(c.created_at)}</div>
-          </div>
-        </div>
-        <span class="status-pill ${c.status || 'pending'}">${c.status || 'pending'}</span>
+    return `<div class="rest-item${selected}${offlineClass}" onclick="selectRest('${r.restaurant_id}')">
+      <div class="rest-item-name">
+        <span>${esc(r.name)}</span>
+        <span class="mini-badge ${bdClass}">${r._bdStatus === 'ok' ? 'ON' : r._bdStatus === 'err' ? 'OFF' : '...'}</span>
       </div>
-      <div class="card-body">
-        ${domain ? `<div class="card-row"><div class="icon web"><i class="fas fa-globe"></i></div><span class="label">Web</span><span class="value"><a href="https://${esc(domain)}" target="_blank">${esc(domain)}</a></span></div>` : ''}
-        ${supabaseUrl ? `<div class="card-row"><div class="icon supabase"><i class="fas fa-database"></i></div><span class="label">Supabase</span><span class="value"><a href="${esc(supabaseUrl)}" target="_blank" class="mono">${esc(supabaseUrl.replace('https://', ''))}</a></span></div>` : ''}
-        ${github ? `<div class="card-row"><div class="icon github"><i class="fab fa-github"></i></div><span class="label">GitHub</span><span class="value"><a href="https://github.com/${esc(github)}" target="_blank">${esc(github)}</a></span></div>` : ''}
-        ${vercelUrl ? `<div class="card-row"><div class="icon vercel"><i class="fas fa-rocket"></i></div><span class="label">Vercel</span><span class="value"><a href="${esc(vercelUrl)}" target="_blank">${esc(vercelUrl.replace('https://', ''))}</a></span></div>` : ''}
-        ${email ? `<div class="card-row"><div class="icon email"><i class="fas fa-envelope"></i></div><span class="label">Email</span><span class="value">${esc(email)}</span></div>` : ''}
-        ${rid ? `<div class="card-row"><div class="icon id"><i class="fas fa-fingerprint"></i></div><span class="label">ID</span><span class="value mono" style="font-size:0.7rem;color:var(--text-dim)">${esc(rid)}</span></div>` : ''}
+      <div class="rest-item-city">${esc(r.city || '—')} ${fullDomain ? '· ' + fullDomain : ''}</div>
+      <div class="rest-item-badges">
+        ${errCount > 0 ? `<span class="mini-badge err"><i class="fas fa-circle-exclamation" style="font-size:0.5rem;"></i> ${errCount}</span>` : ''}
+        ${warnCount > 0 ? `<span class="mini-badge warn"><i class="fas fa-triangle-exclamation" style="font-size:0.5rem;"></i> ${warnCount}</span>` : ''}
+        ${m ? `<span class="mini-badge neutral"><i class="fas fa-chair" style="font-size:0.5rem;"></i> ${m.covers} pax</span>` : ''}
+        ${r._bdLatency ? `<span class="mini-badge neutral">${r._bdLatency}ms</span>` : ''}
       </div>
-      <div class="card-footer">
-        ${domain ? `<a href="https://${esc(domain)}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-external-link-alt"></i> Web</a>` : ''}
-        ${domain ? `<a href="https://${esc(domain)}/admin" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-cog"></i> Admin</a>` : ''}
-        <a href="#" onclick="editClient('${c.id}');return false" class="btn btn-ghost btn-sm"><i class="fas fa-pencil-alt"></i> Editar</a>
-        <a href="#" onclick="openSettings('${c.id}');return false" class="btn btn-ghost btn-sm"><i class="fas fa-sliders-h"></i> Ajustes</a>
-        <a href="#" onclick="deleteClient('${c.id}');return false" class="btn btn-ghost btn-sm" style="color:var(--red)"><i class="fas fa-trash"></i></a>
-      </div>
+      ${m ? `<div class="rest-item-metrics">
+        <div class="rest-item-metric"><span class="val green">${m.confirmed}</span> conf</div>
+        <div class="rest-item-metric"><span class="val yellow">${m.pending}</span> pend</div>
+        <div class="rest-item-metric"><span class="val red">${m.cancelled}</span> canc</div>
+      </div>` : ''}
     </div>`;
   }).join('');
 }
 
-function formatDate(d) {
-  if (!d) return '—';
-  const date = new Date(d);
-  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+function selectRest(id) {
+  selectedRestId = id;
+  renderSidebarList();
+  const rest = allRestaurants.find(r => r.restaurant_id === id);
+  if (rest) renderDetail(rest);
 }
 
-// ── Navigation ───────────────────────────────────────────
-function showPage(page) {
-  document.querySelectorAll('.sidebar-link[data-page]').forEach(el => {
-    el.classList.toggle('active', el.dataset.page === page);
-  });
-  document.querySelectorAll('[id^="page-"]').forEach(el => { el.style.display = 'none'; });
-  const el = document.getElementById('page-' + page);
-  if (el) el.style.display = 'block';
-  if (page === 'clients') loadClients();
-}
+// ── Detail panel ───────────────────────────────────────────
+function renderDetail(r) {
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('detail-content').style.display = 'block';
 
-// ── CRUD ──────────────────────────────────────────────────
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'Nuevo Cliente';
-  document.getElementById('modal-client-id').value = '';
-  ['m-name','m-city','m-domain','m-supabase-url','m-email','m-github','m-vercel-url','m-status'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el.tagName === 'SELECT') el.selectedIndex = 0;
-    else el.value = '';
-  });
-  document.getElementById('client-modal').classList.add('show');
-}
+  const m = r._metrics;
+  const bdClass = r._bdStatus === 'ok' ? 'ok' : r._bdStatus === 'err' ? 'err' : 'warn';
+  const errCount = r._alerts.filter(a => a.s === 'err').length;
+  const warnCount = r._alerts.filter(a => a.s === 'warn').length;
+  const fullDomain = r.domain || (r.subdomain ? r.subdomain + '.gastroexperiencem.es' : '');
+  const adminUrl = fullDomain ? `https://${fullDomain}/admin` : '#';
+  const avgPax = m?.valid > 0 ? (m.covers / m.valid).toFixed(1) : '0';
+  const cancelRate = m?.total > 0 ? Math.round(m.cancelled / m.total * 100) : 0;
+  const webRate = m?.total > 0 ? Math.round(m.web / m.total * 100) : 0;
 
-function editClient(id) {
-  const c = allClients.find(x => x.id === id);
-  if (!c) return;
-  document.getElementById('modal-title').textContent = 'Editar Cliente';
-  document.getElementById('modal-client-id').value = id;
-  document.getElementById('m-name').value = c.name || '';
-  document.getElementById('m-city').value = c.city || '';
-  document.getElementById('m-domain').value = c.domain || '';
-  document.getElementById('m-supabase-url').value = c.supabase_url || '';
-  document.getElementById('m-email').value = c.email || '';
-  document.getElementById('m-github').value = c.github_repo || '';
-  document.getElementById('m-vercel-url').value = c.vercel_url || '';
-  document.getElementById('m-status').value = c.status || 'pending';
-  document.getElementById('client-modal').classList.add('show');
-}
+  // Trend bars
+  const weeks = m?.weeks || [];
+  const maxWeek = Math.max(...weeks.map(w => w.total), 1);
+  const today = new Date().toISOString().split('T')[0];
+  const trendBars = weeks.map(w => {
+    const pct = w.total > 0 ? (w.total / maxWeek * 100) : 0;
+    const isToday = w.label === today;
+    return `<div class="trend-col">
+      <div class="trend-col-bar" style="height:${Math.max(pct, 5)}%;background:${isToday ? 'var(--gold)' : w.total > 0 ? 'var(--gold-dim)' : 'var(--border)'};">
+        <div class="tip">${formatWeekShort(w.label)}<br>${w.total} res · ${w.covers} pax</div>
+      </div>
+      <div class="trend-col-label ${isToday ? 'today' : ''}">${isToday ? 'Hoy' : formatWeekShort(w.label)}</div>
+    </div>`;
+  }).join('');
 
-function closeModal() {
-  document.getElementById('client-modal').classList.remove('show');
-}
+  // Alert badge class
+  const alertBadgeClass = errCount > 0 ? 'has-err' : warnCount > 0 ? 'has-warn' : 'all-ok';
+  const alertBadgeText = errCount > 0 ? errCount : warnCount > 0 ? warnCount : '✓';
 
-async function saveClient() {
-  const id = document.getElementById('modal-client-id').value;
-  const data = {
-    name: document.getElementById('m-name').value.trim(),
-    city: document.getElementById('m-city').value.trim(),
-    domain: document.getElementById('m-domain').value.trim(),
-    supabase_url: document.getElementById('m-supabase-url').value.trim(),
-    email: document.getElementById('m-email').value.trim(),
-    github_repo: document.getElementById('m-github').value.trim(),
-    vercel_url: document.getElementById('m-vercel-url').value.trim(),
-    status: document.getElementById('m-status').value,
-    updated_at: new Date().toISOString(),
-  };
-  showLoading('Guardando...');
-  let error;
-  if (id) {
-    const { error: e } = await db.from('clients').update(data).eq('id', id);
-    error = e;
-  } else {
-    data.restaurant_id = 'rest-' + (data.domain || data.name).toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString(36);
-    const { error: e } = await db.from('clients').insert([data]);
-    error = e;
-  }
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast(id ? 'Cliente actualizado' : 'Cliente creado', 'success');
-  closeModal();
-  loadClients();
-}
+  // Alert rows
+  const alertRows = r._alerts.map(a => `
+    <div class="alert-item">
+      <div class="alert-icon ${a.s}"><i class="fas ${a.i}"></i></div>
+      <div class="alert-content">
+        <div class="ac-title ${a.s}">${a.t}</div>
+        <div class="ac-meta">${a.m}</div>
+      </div>
+    </div>`).join('');
 
-async function deleteClient(id) {
-  if (!confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.')) return;
-  showLoading('Eliminando...');
-  const { error } = await db.from('clients').delete().eq('id', id);
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Cliente eliminado', 'success');
-  loadClients();
-}
+  document.getElementById('detail-content').innerHTML = `
+    <!-- Header -->
+    <div class="detail-header">
+      <div class="detail-avatar">${(r.name || '?')[0].toUpperCase()}</div>
+      <div class="detail-title">
+        <h1>
+          <span class="name">${esc(r.name)}</span>
+          <span class="mini-badge ${bdClass}">${r._bdStatus === 'ok' ? 'Backend OK' : r._bdStatus === 'err' ? 'Offline' : 'Verificando...'}</span>
+          <span class="mini-badge ${r.status === 'active' ? 'ok' : 'warn'}">${r.status || 'active'}</span>
+        </h1>
+        <div class="meta">
+          <span><i class="fas fa-map-marker-alt" style="font-size:0.6rem;"></i> ${esc(r.city || 'Sin ciudad')}</span>
+          ${fullDomain ? `<span class="sep"><span></span></span><span style="font-family:'Space Mono',monospace;font-size:0.62rem;">${esc(fullDomain)}</span>` : ''}
+          ${r.email ? `<span class="sep"><span></span></span><span>${esc(r.email)}</span>` : ''}
+        </div>
+      </div>
+      <div class="detail-actions">
+        <a href="${adminUrl}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-cog"></i> Admin</a>
+        <button class="btn btn-ghost btn-sm" onclick="copyId('${esc(r.restaurant_id)}')"><i class="fas fa-copy"></i> ID</button>
+      </div>
+    </div>
 
-// ── Settings ─────────────────────────────────────────────
-async function openSettings(id) {
-  const c = allClients.find(x => x.id === id);
-  if (!c) return;
+    <!-- Status bar -->
+    <div class="status-bar">
+      <div class="sb-cell"><div class="sb-label">Confirmadas</div><div class="sb-value green">${m?.confirmed || 0}</div><div class="sb-sub">próximas</div></div>
+      <div class="sb-cell"><div class="sb-label">Pendientes</div><div class="sb-value yellow">${m?.pending || 0}</div><div class="sb-sub">por confirmar</div></div>
+      <div class="sb-cell"><div class="sb-label">Completadas</div><div class="sb-value">${m?.completed || 0}</div><div class="sb-sub">pasadas</div></div>
+      <div class="sb-cell"><div class="sb-label">Canceladas</div><div class="sb-value red">${m?.cancelled || 0}</div><div class="sb-sub">${m?.total > 0 ? Math.round(m.cancelled/m.total*100)+'%' : '0%'} ratio</div></div>
+      <div class="sb-cell"><div class="sb-label">Cubiertos</div><div class="sb-value gold">${m?.covers || 0}</div><div class="sb-sub">personas</div></div>
+      <div class="sb-cell"><div class="sb-label">Web</div><div class="sb-value blue">${m?.web || 0}</div><div class="sb-sub">${webRate}% online</div></div>
+      <div class="sb-cell"><div class="sb-label">Hora pico</div><div class="sb-value">${m?.peakHour || '—'}</div><div class="sb-sub">reservas</div></div>
+    </div>
 
-  document.getElementById('settings-title').innerHTML = '<i class="fas fa-sliders-h" style="color:var(--primary);margin-right:8px;"></i> ' + esc(c.name);
-
-  const body = document.getElementById('settings-body');
-  body.innerHTML = `
-    <div style="margin-bottom:20px;">
-      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:10px;">Información del restaurante</div>
-      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;overflow:hidden;">
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-building"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Nombre</div>
-            <div style="font-size:0.85rem;font-weight:500;">${esc(c.name || '—')}</div>
+    <!-- Backend card -->
+    <div class="backend-card">
+      <h3><i class="fas fa-server"></i> Estado del Backend</h3>
+      <div class="backend-grid">
+        <div class="be-item">
+          <div class="be-icon ${bdClass}"><i class="fas fa-database"></i></div>
+          <div class="be-info">
+            <div class="be-name">Supabase</div>
+            <div class="be-val ${bdClass}">${r._bdStatus === 'ok' ? `${r._bdLatency}ms` : r._bdStatus === 'err' ? 'Offline' : 'Verificando...'}</div>
           </div>
         </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-map-marker-alt"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Ciudad</div>
-            <div style="font-size:0.85rem;font-weight:500;">${esc(c.city || '—')}</div>
+        <div class="be-item">
+          <div class="be-icon ${bdClass}"><i class="fas fa-clock"></i></div>
+          <div class="be-info">
+            <div class="be-name">Hora servidor</div>
+            <div class="be-val">${new Date().toLocaleTimeString('es-ES')}</div>
           </div>
         </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-globe"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Dominio</div>
-            <div style="font-size:0.85rem;">${c.domain ? `<a href="https://${esc(c.domain)}" target="_blank" style="color:var(--primary);">${esc(c.domain)}</a>` : '—'}</div>
+        <div class="be-item">
+          <div class="be-icon ${bdClass}"><i class="fas fa-fire"></i></div>
+          <div class="be-info">
+            <div class="be-name">Hora pico</div>
+            <div class="be-val">${m?.peakHour || '—'}</div>
           </div>
         </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-envelope"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Email</div>
-            <div style="font-size:0.85rem;">${esc(c.email || '—')}</div>
+        <div class="be-item">
+          <div class="be-icon ${bdClass}"><i class="fas fa-key"></i></div>
+          <div class="be-info">
+            <div class="be-name">Restaurant ID</div>
+            <div class="be-val" style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${esc(r.restaurant_id)}</div>
           </div>
         </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-database" style="color:#3ecf8e;"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Supabase</div>
-            <div style="font-size:0.78rem;font-family:monospace;color:var(--text-dim);word-break:break-all;">${esc(c.supabase_url || '—')}</div>
+        <div class="be-item">
+          <div class="be-icon ok"><i class="fas fa-shield-halved"></i></div>
+          <div class="be-info">
+            <div class="be-name">Status</div>
+            <div class="be-val ok">${r.status || 'active'}</div>
           </div>
         </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-fingerprint" style="color:var(--purple);"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Restaurant ID</div>
-            <div style="font-size:0.72rem;font-family:monospace;color:var(--text-dim);word-break:break-all;">${esc(c.restaurant_id || '—')}</div>
-          </div>
-        </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fab fa-github"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">GitHub</div>
-            <div style="font-size:0.85rem;">${c.github_repo ? `<a href="https://github.com/${esc(c.github_repo)}" target="_blank" style="color:var(--purple);">${esc(c.github_repo)}</a>` : '—'}</div>
-          </div>
-        </div>
-        <div class="card-row" style="padding:10px 14px;border-bottom:1px solid var(--border);">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-rocket"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Vercel</div>
-            <div style="font-size:0.85rem;">${c.vercel_url ? `<a href="${esc(c.vercel_url)}" target="_blank" style="color:#fff;">${esc(c.vercel_url.replace('https://',''))}</a>` : '—'}</div>
-          </div>
-        </div>
-        <div class="card-row" style="padding:10px 14px;">
-          <div class="icon" style="width:32px;height:32px;border-radius:8px;"><i class="fas fa-calendar"></i></div>
-          <div style="flex:1;">
-            <div style="font-size:0.7rem;color:var(--text-dim);">Creado</div>
-            <div style="font-size:0.85rem;">${formatDate(c.created_at)}</div>
+        <div class="be-item">
+          <div class="be-icon ok"><i class="fas fa-calendar-plus"></i></div>
+          <div class="be-info">
+            <div class="be-name">Última reserva</div>
+            <div class="be-val">${m?.latestRes ? formatDate(m.latestRes.date) : '—'}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div>
-      <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:10px;">Cambiar contraseña admin</div>
-      <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:16px;">
-        <input type="hidden" id="set-supabase-url" value="${esc(c.supabase_url || '')}">
-        <input type="hidden" id="set-supabase-key" value="${esc(c.supabase_anon_key || '')}">
-        <input type="hidden" id="set-restaurant-id" value="${esc(c.restaurant_id || '')}">
-        <div class="form-group">
-          <label>Nueva contraseña</label>
-          <input type="password" id="set-new-password" placeholder="Escribe la nueva contraseña" autocomplete="new-password">
-        </div>
-        <div class="form-group">
-          <label>Confirmar contraseña</label>
-          <input type="password" id="set-confirm-password" placeholder="Repite la nueva contraseña" autocomplete="new-password">
-        </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="changeClientPassword()">
-          <i class="fas fa-key"></i> Actualizar contraseña
-        </button>
-        <div id="set-password-msg" style="margin-top:10px;font-size:0.78rem;text-align:center;"></div>
+    <!-- Alerts card -->
+    <div class="alerts-card">
+      <div class="alerts-card-header" onclick="toggleAlerts()">
+        <h3><i class="fas fa-bell"></i> Sistema de Alertas <span class="count ${alertBadgeClass}">${alertBadgeText}</span></h3>
+        <i class="fas fa-chevron-down" id="alerts-chevron" style="font-size:0.7rem;color:var(--text-dim);"></i>
       </div>
+      <div class="alerts-list" id="alerts-list">
+        ${alertRows}
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div class="trend-card">
+      <h3>
+        <span><i class="fas fa-chart-simple"></i> Tendencia semanal</span>
+        <span style="font-size:0.6rem;font-weight:400;color:var(--text-dim);text-transform:none;letter-spacing:0;">${weeks.reduce((s,w)=>s+w.total,0)} reservas · ${weeks.reduce((s,w)=>s+w.covers,0)} cubiertos</span>
+      </h3>
+      <div class="trend-chart-wrap">
+        <div class="trend-chart">${trendBars || '<div style="flex:1;text-align:center;color:var(--text-dim);font-size:0.78rem;padding:30px;">Sin datos</div>'}</div>
+      </div>
+      <div class="trend-legend">
+        <div class="trend-legend-item"><div class="dot" style="background:var(--gold);"></div> Semana actual</div>
+        <div class="trend-legend-item"><div class="dot" style="background:var(--gold-dim);"></div> Semanas anteriores</div>
+        <div class="trend-legend-item"><div class="dot" style="background:var(--border);"></div> Sin actividad</div>
+      </div>
+    </div>
+
+    <!-- Metrics grid -->
+    <div class="metrics-grid">
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-list"></i> Total reservas</div><div class="mt-value">${m?.total || 0}</div><div class="mt-sub">últimos 30 días</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-chart-line"></i> Media/pax</div><div class="mt-value gold">${avgPax}</div><div class="mt-sub">por reserva</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-cancel"></i> Cancelaciones</div><div class="mt-value ${cancelRate > 15 ? 'red' : 'green'}">${cancelRate}%</div><div class="mt-sub">${m?.cancelled || 0} canceladas</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-globe"></i> Reserva web</div><div class="mt-value blue">${webRate}%</div><div class="mt-sub">${m?.web || 0} online · ${m?.phone || 0} tfno</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-calendar-day"></i> Hoy</div><div class="mt-value ${m?.todayCount === 0 ? 'yellow' : 'green'}">${m?.todayCount || 0}</div><div class="mt-sub">reservas</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-calendar-minus"></i> Ayer</div><div class="mt-value">${m?.yesterdayCount || 0}</div><div class="mt-sub">reservas</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-chart-column"></i> Semana actual</div><div class="mt-value">${weeks.filter(w=>w.isCurrent).reduce((s,w)=>s+w.total,0)}</div><div class="mt-sub">reservas</div></div>
+      <div class="metric-tile"><div class="mt-label"><i class="fas fa-phone"></i> Teléfono</div><div class="mt-value">${m?.phone || 0}</div><div class="mt-sub">${m?.total > 0 ? Math.round((m.phone/m.total)*100) : 0}% del total</div></div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="quick-actions">
+      <a href="${adminUrl}" target="_blank" class="qa-btn"><i class="fas fa-cog"></i> Panel Admin</a>
+      <a href="https://supabase.com/dashboard" target="_blank" class="qa-btn"><i class="fas fa-database"></i> Supabase</a>
+      <button class="qa-btn" onclick="window.open('https://${esc(fullDomain)}', '_blank')"><i class="fas fa-globe"></i> Web pública</button>
+      <button class="qa-btn danger" onclick="loadAllData()"><i class="fas fa-rotate"></i> Forzar refresh</button>
+    </div>
+
+    <div style="font-size:0.62rem;color:var(--text-muted);text-align:center;font-family:'Space Mono',monospace;padding-bottom:10px;">
+      ID: ${esc(r.restaurant_id)} · Actualizado ${new Date().toLocaleTimeString('es-ES')}
     </div>
   `;
-
-  document.getElementById('settings-modal').classList.add('show');
 }
 
-function closeSettings() {
-  document.getElementById('settings-modal').classList.remove('show');
+function toggleAlerts() {
+  const list = document.getElementById('alerts-list');
+  const chev = document.getElementById('alerts-chevron');
+  const open = list.classList.toggle('open');
+  if (chev) chev.style.transform = open ? 'rotate(180deg)' : '';
 }
 
-async function changeClientPassword() {
-  const supabaseUrl = document.getElementById('set-supabase-url').value;
-  const supabaseKey = document.getElementById('set-supabase-key').value;
-  const restaurantId = document.getElementById('set-restaurant-id').value;
-  const newPass = document.getElementById('set-new-password').value;
-  const confirmPass = document.getElementById('set-confirm-password').value;
-  const msgEl = document.getElementById('set-password-msg');
+function copyId(id) { navigator.clipboard.writeText(id).then(() => toast('ID copiado', 'success')); }
 
-  if (!newPass || newPass.length < 4) {
-    msgEl.innerHTML = '<span style="color:var(--red)">La contraseña debe tener al menos 4 caracteres</span>';
-    return;
-  }
-  if (newPass !== confirmPass) {
-    msgEl.innerHTML = '<span style="color:var(--red)">Las contraseñas no coinciden</span>';
-    return;
-  }
-  if (!supabaseUrl || !supabaseKey || !restaurantId) {
-    msgEl.innerHTML = '<span style="color:var(--red)">Faltan datos del cliente (Supabase no configurado)</span>';
-    return;
-  }
+// ── Utils ─────────────────────────────────────────────────
 
-  msgEl.innerHTML = '<span style="color:var(--text-dim)"><span class="spinner"></span> Actualizando...</span>';
 
-  try {
-    const clientDb = supabase.createClient(supabaseUrl, supabaseKey);
-    const { error } = await clientDb.from('settings').upsert(
-      { restaurant_id: restaurantId, key: 'admin_password', value: newPass },
-      { onConflict: 'restaurant_id,key' }
-    );
-    if (error) throw error;
-    msgEl.innerHTML = '<span style="color:var(--green)">✓ Contraseña actualizada correctamente</span>';
-    document.getElementById('set-new-password').value = '';
-    document.getElementById('set-confirm-password').value = '';
-  } catch(e) {
-    msgEl.innerHTML = '<span style="color:var(--red)">Error: ' + esc(e.message) + '</span>';
-  }
+// ── Volver / navigation ──────────────────────────────────
+function goBack() {
+  selectedRestId = null;
+  document.getElementById('empty-detail').style.display = 'flex';
+  document.getElementById('detail-content').style.display = 'none';
+  document.getElementById('new-client-form').style.display = 'none';
+  document.getElementById('btn-back').style.display = 'none';
+  renderSidebarList();
 }
 
-// ── New Client Form ──────────────────────────────────────
-async function handleNewClient(e) {
-  e.preventDefault();
+function showNewClientForm() {
+  selectedRestId = null;
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('detail-content').style.display = 'none';
+  document.getElementById('new-client-form').style.display = 'block';
+  document.getElementById('btn-back').style.display = 'inline-flex';
+  // Reset form
+  document.getElementById('nc-name').value = '';
+  document.getElementById('nc-city').value = '';
+  document.getElementById('nc-domain').value = '';
+  document.getElementById('nc-email').value = '';
+  document.getElementById('nc-status').style.display = 'none';
+  document.getElementById('nc-output').style.display = 'none';
+  document.getElementById('nc-submit-btn').disabled = false;
+  document.getElementById('nc-btn-text').textContent = 'Crear y Desplegar';
+  document.getElementById('sb-list').querySelectorAll('.rest-item').forEach(el => el.classList.remove('selected'));
+}
+
+// ── New Client form ──────────────────────────────────────
+async function submitNewClient() {
   const name = document.getElementById('nc-name').value.trim();
   const city = document.getElementById('nc-city').value.trim();
-  const domain = document.getElementById('nc-domain').value.trim().toLowerCase().replace(/[^a-z0-9.]/g, '');
+  const domain = document.getElementById('nc-domain').value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const email = document.getElementById('nc-email').value.trim();
-  const supabase_url = document.getElementById('nc-supabase-url').value.trim();
-  const supabase_anon_key = document.getElementById('nc-supabase-key').value.trim();
-  const github_repo = document.getElementById('nc-github').value.trim();
-  const vercel_url = document.getElementById('nc-vercel-url').value.trim();
 
-  if (!name || !email || !supabase_url || !supabase_anon_key) {
-    toast('Completa los campos obligatorios', 'error'); return;
+  if (!name || !city || !domain || !email) {
+    showNcStatus('Completa todos los campos obligatorios', 'error');
+    return;
   }
 
-  const btn = document.getElementById('nc-submit');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Creando...';
+  if (!email.includes('@') || !email.includes('.')) {
+    showNcStatus('Email no válido', 'error');
+    return;
+  }
 
-  const restaurant_id = 'rest-' + (domain || name).toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString(36);
-  const { error } = await db.from('clients').insert([{
-    restaurant_id, name, city, domain, email,
-    supabase_url, supabase_anon_key, github_repo, vercel_url, status: 'active'
-  }]);
+  const restaurant_id = 'rest-' + domain.replace(/[^a-z0-9]/gi, '-') + '-' + Date.now().toString(36);
 
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-plus"></i> Crear Cliente';
+  // Show loading
+  document.getElementById('nc-submit-btn').disabled = true;
+  document.getElementById('nc-btn-text').innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;margin-right:4px;"></span> Desplegando...';
+  showNcStatus('Iniciando despliegue... esto puede tardar 2-3 minutos', 'info');
+  document.getElementById('nc-output').style.display = 'block';
+  document.getElementById('nc-output').textContent = 'Esperando respuesta del servidor...\n';
 
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Cliente creado con éxito', 'success');
-  document.getElementById('new-client-form').reset();
-  loadClients();
-  showPage('clients');
+  // Run the deploy script via fetch (proxied to backend)
+  // We use a custom endpoint approach: POST to a local Node server
+  // Since we're serving static, we fall back to: trigger via window.location
+  // Instead: use navigator.sendBeacon with a signal, or just show instructions
+
+  // Actually: the dashboard is served from the Mac Mini.
+  // We can use fetch() to a local dev server endpoint if available.
+  // For now: show instructions to run manually, or try exec
+
+  // Let's try a fetch to trigger the script via a background endpoint
+  try {
+    const formData = JSON.stringify({ name, city, domain, email, restaurant_id });
+    const result = await triggerDeploy(formData);
+    if (result.ok) {
+      showNcStatus(`✓ Cliente "${name}" creado y desplegado!\nURL: https://${domain}\nAdmin: https://${domain}/admin`, 'success');
+      document.getElementById('nc-output').textContent = result.output || '';
+      // Refresh restaurant list after 3s
+      setTimeout(() => { loadAllData(); goBack(); }, 3000);
+    } else {
+      showNcStatus('Error: ' + (result.error || 'Unknown error'), 'error');
+      document.getElementById('nc-output').textContent = result.output || result.error || '';
+      document.getElementById('nc-submit-btn').disabled = false;
+      document.getElementById('nc-btn-text').textContent = 'Crear y Desplegar';
+    }
+  } catch(e) {
+    showNcStatus('Error de conexión: ' + e.message, 'error');
+    document.getElementById('nc-submit-btn').disabled = false;
+    document.getElementById('nc-btn-text').textContent = 'Crear y Desplegar';
+  }
 }
 
-async function testConnection() {
-  const url = document.getElementById('nc-supabase-url').value.trim();
-  const key = document.getElementById('nc-supabase-key').value.trim();
-  if (!url || !key) { toast('Introduce URL y key', 'error'); return; }
-  const testDb = supabase.createClient(url, key);
-  const { error } = await testDb.from('settings').select('key').limit(1);
-  if (error) toast('Conexión fallida: ' + error.message, 'error');
-  else toast('Conexión exitosa ✓', 'success');
+async function triggerDeploy(formData) {
+  // Use a custom server-side endpoint via fetch to localhost:3002
+  // The deploy-server.js script runs on port 3002
+  try {
+    const res = await fetch('http://localhost:3002/deploy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: formData,
+    });
+    if (res.ok) return await res.json();
+    return { ok: false, error: 'Server error: ' + res.status };
+  } catch(e) {
+    // Server not running — return instructions
+    return { ok: false, error: 'Servidor de deploy no disponible. Necesitas iniciar: node scripts/deploy-server.js', output: 'Para desplegar automáticamente, inicia el servidor de deploy:\n\n  node scripts/deploy-server.js\n\nO ejecuta manualmente:\n  node scripts/deploy-client.js "' + JSON.parse(formData).name + '" "' + JSON.parse(formData).city + '" "' + JSON.parse(formData).domain + '" "' + JSON.parse(formData).email + '" "' + JSON.parse(formData).restaurant_id + '"' };
+  }
 }
 
-// ── Utils ────────────────────────────────────────────────
+async function testNewClientConn() {
+  const domain = document.getElementById('nc-domain').value.trim();
+  showNcStatus('Probando conexión...', 'info');
+  // Just show a test message since we don't have a real BD to test against
+  showNcStatus('La conexión a la BD se probará durante el despliegue. Si hay error, el sistema te lo indicará.', 'info');
+}
+
+function showNcStatus(msg, type) {
+  const el = document.getElementById('nc-status');
+  el.style.display = 'block';
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;font-size:0.78rem;${type === 'error' ? 'background:var(--red-dim);border:1px solid rgba(240,82,82,0.3);color:var(--red);' : type === 'success' ? 'background:var(--green-dim);border:1px solid rgba(31,217,122,0.3);color:var(--green);' : 'background:var(--blue-dim);border:1px solid rgba(74,158,255,0.3);color:var(--blue);'}"><i class="fas fa-${type === 'error' ? 'times-circle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i> ${msg}</div>`;
+}
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function showLoading(text) {
-  document.getElementById('loading-text').textContent = text || 'Cargando...';
-  document.getElementById('loading-overlay').classList.add('show');
-}
-function hideLoading() { document.getElementById('loading-overlay').classList.remove('show'); }
-function toast(msg, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = 'toast ' + (type === 'error' ? 'error' : 'success');
-  t.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`;
-  container.appendChild(t);
-  setTimeout(() => t.remove(), 4000);
-}
+function formatDate(d) { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }); }
+function formatWeekShort(iso) { if (!iso) return '—'; const d = new Date(iso); return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }); }
+function toast(msg, type = 'success') { const c = document.getElementById('toast-container'); const t = document.createElement('div'); t.className = 'toast ' + type; t.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${msg}`; c.appendChild(t); setTimeout(() => t.remove(), 5000); }
 </script>
-
-<div id="toast-container"></div>
 </body>
 </html>

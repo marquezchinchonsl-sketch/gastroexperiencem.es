@@ -174,7 +174,7 @@ async function checkLogin() {
   // Intentar login con Supabase Auth (nuevo flujo)
   if (storedEmail) {
     try {
-      const { data, error } = await auth.signInWithPassword({
+      const { data, error } = await auth().signInWithPassword({
         email: storedEmail,
         password: inputVal
       });
@@ -189,7 +189,7 @@ async function checkLogin() {
   // Fallback legacy: password en settings (backwards compat)
   let dbPass = null;
   try {
-    const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
+    const { data } = await db().from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
     dbPass = data;
   } catch(e) { console.warn('DB pass fetch error', e); }
 
@@ -220,7 +220,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (sessionStorage.getItem('admin_auth') !== 'true') return;
 
   // 1. Intentar restaurar sesión con Supabase Auth (nuevo flujo)
-  const { data: authSession } = await auth.getSession();
+  const { data: authSession } = await auth().getSession();
   if (authSession?.session) {
     const email = authSession.session.user?.email || '';
     if (email && !sessionStorage.getItem('admin_email')) {
@@ -274,14 +274,14 @@ document.addEventListener('keydown', resetSessionTimeout);
 document.addEventListener('touchstart', resetSessionTimeout);
 
 // ── WebSockets ───────────────────────────────────────────
-db.channel('public:reservations')
+db().channel('public:reservations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${RID}` }, () => {
     if(document.getElementById('tab-app-dashboard').classList.contains('active-tab')) loadMultiRestaurantPanel();
     if(document.getElementById('tab-reservations').classList.contains('active-tab')) loadDashboard();
     if(document.getElementById('tab-metrics').classList.contains('active-tab')) loadMetrics();
   }).subscribe();
 
-db.channel('public:menu_items')
+db().channel('public:menu_items')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items', filter: `restaurant_id=eq.${RID}` }, () => {
     if(document.getElementById('tab-menu').classList.contains('active-tab')) loadProducts();
   }).subscribe();
@@ -336,7 +336,7 @@ async function loadRestaurantSelector() {
         // Re-init Supabase client
         try {
           window.db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
-          if (window.db.rpc) window.db.rpc('set_current_restaurant', { p_restaurant_id: rid }).then(()=>{}).catch(()=>{});
+          if (window.db().rpc) window.db().rpc('set_current_restaurant', { p_restaurant_id: rid }).then(()=>{}).catch(()=>{});
         } catch(e) { console.warn('Supabase re-init:', e); }
         document.getElementById('admin-bar-label').textContent = r.bar_name || r.biz_name || rid;
         document.title = `Admin | ${r.bar_name || r.biz_name || rid}`;
@@ -585,13 +585,13 @@ async function loadDashboard() {
   }
 
   if ((!tablesData || tablesData.length === 0) && !IS_DEMO) {
-    const tRes = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle();
+    const tRes = await db().from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle();
     if (tRes.data && tRes.data.value) tablesData = JSON.parse(tRes.data.value);
   } else if (false && !tablesData || tablesData.length === 0)) {
     tablesData = DEMO_TABLES_MAP;
   }
 
-  let query = db.from('reservations').select('*').eq('restaurant_id', RID).neq('status', 'cancelled');
+  let query = db().from('reservations').select('*').eq('restaurant_id', RID).neq('status', 'cancelled');
   
   if (dateInput.value) {
     query = query.eq('date', dateInput.value).order('time');
@@ -645,7 +645,7 @@ document.getElementById('clear-btn').onclick = async () => {
   if (!d) { toast('Selecciona una fecha específica primero', 'error'); return; }
   if (confirm(`¿Bloquear el día ${d} para no recibir más reservas?`)) {
     try {
-      const { error } = await db.from('special_days').upsert({ restaurant_id: RID, date: d, is_closed: true }, { onConflict: 'restaurant_id,date' });
+      const { error } = await db().from('special_days').upsert({ restaurant_id: RID, date: d, is_closed: true }, { onConflict: 'restaurant_id,date' });
       if (error) throw error;
       toast(`Día ${d} bloqueado`, 'success');
     } catch(err) {
@@ -669,7 +669,7 @@ document.getElementById('search-reservations').addEventListener('input', (e) => 
 
 document.getElementById('export-csv-btn').onclick = async () => {
   const d = dateInput.value;
-  let query = db.from('reservations').select('*').eq('restaurant_id', RID).order('time');
+  let query = db().from('reservations').select('*').eq('restaurant_id', RID).order('time');
   if (d) query = query.eq('date', d);
   const { data } = await query;
   if (!data || !data.length) { toast('No hay datos para exportar', 'info'); return; }
@@ -768,7 +768,7 @@ function renderTable(res) {
       const val = sel.value;
       const resId = sel.dataset.id;
       const notesVal = val !== "" ? `TABLE:${val}` : null;
-      await db.from('reservations').update({ notes: notesVal }).eq('id', resId);
+      await db().from('reservations').update({ notes: notesVal }).eq('id', resId);
       toast('Mesa asignada ✓', 'success');
     };
   });
@@ -805,7 +805,7 @@ async function confirmReservation(id, email, name, date, time, people, zone) {
     let notesVal = null;
     if (tablesData && tablesData.length > 0) {
       // Fetch all reservations for that day to find occupied tables
-      const { data: dayRes } = await db.from('reservations').select('notes, time').eq('date', date).eq('restaurant_id', RID);
+      const { data: dayRes } = await db().from('reservations').select('notes, time').eq('date', date).eq('restaurant_id', RID);
       const occupiedAtTime = (dayRes || []).filter(r => r.time === time && r.notes && r.notes.startsWith('TABLE:')).map(r => parseInt(r.notes.split(':')[1]));
       
       const pax = parseInt(people || 0);
@@ -820,14 +820,14 @@ async function confirmReservation(id, email, name, date, time, people, zone) {
     const updatePayload = { status: 'confirmed' };
     if (notesVal) updatePayload.notes = notesVal;
 
-    const { error: updErr } = await db.from('reservations').update(updatePayload).eq('id', id).eq('restaurant_id', RID);
+    const { error: updErr } = await db().from('reservations').update(updatePayload).eq('id', id).eq('restaurant_id', RID);
     if (updErr) throw updErr;
     
     toast(notesVal ? 'Reserva confirmada y mesa auto-asignada ✓' : 'Reserva confirmada ✓', 'success');
     loadDashboard(); // Refrescar UI inmediatamente
 
     // 2. Intentar enviar Email (opcional si falla)
-    const { data: cfg } = await db.from('settings').select('*').eq('restaurant_id', RID);
+    const { data: cfg } = await db().from('settings').select('*').eq('restaurant_id', RID);
     const get = k => cfg?.find(s => s.key === k)?.value;
     const pub = get('ejs_public_key'), svc = get('ejs_service_id'), tpl = get('ejs_template_client');
     
@@ -860,7 +860,7 @@ async function deleteReservation(id) {
   if (!confirm('¿Eliminar esta reserva definitivamente?')) return;
 
   try {
-    const { error } = await db.from('reservations').delete().eq('id', id).eq('restaurant_id', RID);
+    const { error } = await db().from('reservations').delete().eq('id', id).eq('restaurant_id', RID);
     if (error) throw error;
     
     toast('Reserva eliminada con éxito','info');
@@ -907,7 +907,7 @@ document.getElementById('manual-res-form').onsubmit = async (e) => {
     status: 'confirmed'
   };
   
-  const { error } = await db.from('reservations').insert([payload]);
+  const { error } = await db().from('reservations').insert([payload]);
   if (error) { toast('Error: ' + error.message, 'error'); }
   else {
     toast('Reserva manual creada ✓', 'success');
@@ -928,7 +928,7 @@ let allProducts = [];
 
 async function loadProducts() {
   try {
-    const { data, error } = await db.from('menu_items').select('*').eq('restaurant_id', RID).order('position');
+    const { data, error } = await db().from('menu_items').select('*').eq('restaurant_id', RID).order('position');
     if (error) throw error;
     allProducts = data || [];
   } catch (err) {
@@ -1046,14 +1046,14 @@ document.getElementById('product-form').onsubmit = async e => {
   if (fileInput.files.length > 0) {
     const file = fileInput.files[0];
     const path = `${RID}/${Date.now()}.${file.name.split('.').pop()}`;
-    const { error: upErr } = await db.storage.from('menu-images').upload(path, file, { upsert: true });
+    const { error: upErr } = await db().storage.from('menu-images').upload(path, file, { upsert: true });
     if (upErr) {
       console.error('Error uploading image:', upErr);
       toast('Error al subir la imagen: ' + upErr.message, 'error');
       // If upload fails, we show the error but allow the product to be saved without the new image
       // or we could stop here. Let's at least log it properly.
     } else {
-      const { data: urlData } = db.storage.from('menu-images').getPublicUrl(path);
+      const { data: urlData } = db().storage.from('menu-images').getPublicUrl(path);
       imageUrl = urlData.publicUrl;
       console.log('Imagen subida con éxito:', imageUrl);
     }
@@ -1074,8 +1074,8 @@ document.getElementById('product-form').onsubmit = async e => {
     allergens,
   };
   try {
-    if (id) await db.from('menu_items').update(payload).eq('id', id);
-    else    await db.from('menu_items').insert([payload]);
+    if (id) await db().from('menu_items').update(payload).eq('id', id);
+    else    await db().from('menu_items').insert([payload]);
     productModal.classList.remove('open');
     loadProducts();
     toast(id ? 'Producto actualizado ✓' : 'Producto añadido ✓','success');
@@ -1090,7 +1090,7 @@ document.getElementById('product-form').onsubmit = async e => {
 
 window.deleteProduct = async id => {
   if (!confirm('¿Borrar este producto?')) return;
-  await db.from('menu_items').delete().eq('id', id);
+  await db().from('menu_items').delete().eq('id', id);
   loadProducts();
   toast('Producto eliminado','info');
 };
@@ -1208,7 +1208,7 @@ document.getElementById('process-import-btn').onclick = async () => {
   
   if (payloads.length > 0) {
     try {
-      const { error } = await db.from('menu_items').insert(payloads);
+      const { error } = await db().from('menu_items').insert(payloads);
       if (error) throw error;
       toast(`${payloads.length} platos importados ✓`, 'success');
       loadProducts();
@@ -1236,7 +1236,7 @@ const DAYS = [
 ];
 
 async function loadSchedule() {
-  const { data } = await db.from('settings').select('*').eq('key', 'weekly_schedule').eq('restaurant_id', RID).maybeSingle();
+  const { data } = await db().from('settings').select('*').eq('key', 'weekly_schedule').eq('restaurant_id', RID).maybeSingle();
   let schedule = {};
   if (data?.value) { try { schedule = JSON.parse(data.value); } catch(e){} }
   renderScheduleGrid(schedule);
@@ -1332,7 +1332,7 @@ document.getElementById('save-schedule-btn').onclick = async () => {
     };
   });
   try {
-    const { error } = await db.from('settings').upsert({ restaurant_id: RID, key: 'weekly_schedule', value: JSON.stringify(schedule) }, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert({ restaurant_id: RID, key: 'weekly_schedule', value: JSON.stringify(schedule) }, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     toast('Horario semanal guardado ✓', 'success');
     checkOnboarding();
@@ -1345,8 +1345,8 @@ document.getElementById('save-schedule-btn').onclick = async () => {
 };
 
 async function loadSpecialDays() {
-  const { data } = await db.from('special_days').select('*').eq('restaurant_id', RID).order('date');
-  const { data: rData } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key','special_reasons').maybeSingle();
+  const { data } = await db().from('special_days').select('*').eq('restaurant_id', RID).order('date');
+  const { data: rData } = await db().from('settings').select('value').eq('restaurant_id', RID).eq('key','special_reasons').maybeSingle();
   let reasons = {};
   try { if (rData?.value) reasons = JSON.parse(rData.value); } catch(e){}
   const tbody = document.getElementById('special-days-body');
@@ -1372,13 +1372,13 @@ async function setSpecialDay(closed) {
   const d = document.getElementById('special-date-input').value;
   const reason = document.getElementById('special-reason-input') ? document.getElementById('special-reason-input').value : '';
   if (!d) { toast('Selecciona una fecha','error'); return; }
-  await db.from('special_days').upsert({ restaurant_id: RID, date: d, is_closed: closed }, { onConflict: 'restaurant_id,date' });
+  await db().from('special_days').upsert({ restaurant_id: RID, date: d, is_closed: closed }, { onConflict: 'restaurant_id,date' });
   
-  const { data: rData } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key','special_reasons').maybeSingle();
+  const { data: rData } = await db().from('settings').select('value').eq('restaurant_id', RID).eq('key','special_reasons').maybeSingle();
   let reasons = {};
   try { if (rData?.value) reasons = JSON.parse(rData.value); } catch(e){}
   reasons[d] = reason;
-  await db.from('settings').upsert({ restaurant_id: RID, key: 'special_reasons', value: JSON.stringify(reasons) }, { onConflict: 'restaurant_id,key' });
+  await db().from('settings').upsert({ restaurant_id: RID, key: 'special_reasons', value: JSON.stringify(reasons) }, { onConflict: 'restaurant_id,key' });
 
   loadSpecialDays();
   toast(`Día ${d} marcado como ${closed?'CERRADO':'ABIERTO (excepción)'}`, closed?'error':'success');
@@ -1388,14 +1388,14 @@ document.getElementById('add-special-close-btn').onclick = () => setSpecialDay(t
 document.getElementById('add-special-open-btn').onclick  = () => setSpecialDay(false);
 window.deleteSpecialDay = async date => {
   requireAdmin();
-  await db.from('special_days').delete().eq('date', date).eq('restaurant_id', RID);
+  await db().from('special_days').delete().eq('date', date).eq('restaurant_id', RID);
   loadSpecialDays();
   toast('Día especial eliminado','info');
 };
 
 // ── SECCIONES / CATEGORÍAS ────────────────────────────────
 async function loadCategories() {
-  const { data } = await db.from('settings').select('*').eq('key','menu_categories').eq('restaurant_id', RID).maybeSingle();
+  const { data } = await db().from('settings').select('*').eq('key','menu_categories').eq('restaurant_id', RID).maybeSingle();
   let cats = APP_CONFIG.menuCategories;
   if (data?.value) { try { cats = JSON.parse(data.value); } catch(e){} }
   renderCategoriesList(cats);
@@ -1488,7 +1488,7 @@ async function saveCategories() {
   const cats = list._cats;
   if (!cats) return;
   try {
-    const { error } = await db.from('settings').upsert({ restaurant_id: RID, key: 'menu_categories', value: JSON.stringify(cats) }, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert({ restaurant_id: RID, key: 'menu_categories', value: JSON.stringify(cats) }, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     // Actualizar config en memoria
     APP_CONFIG.menuCategories = cats;
@@ -1529,7 +1529,7 @@ setTimeout(() => {
 
 // ── NEGOCIO Y PERFIL ──────────────────────────────────────
 async function loadBusinessTab() {
-  const { data } = await db.from('settings').select('*').eq('restaurant_id', RID);
+  const { data } = await db().from('settings').select('*').eq('restaurant_id', RID);
   if (!data) return;
 
   const get = k => data.find(x => x.key === k)?.value || '';
@@ -1556,7 +1556,7 @@ document.getElementById('save-biz-info-btn').onclick = async () => {
   ];
 
   try {
-    const { error } = await db.from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     document.getElementById('admin-bar-label').textContent = document.getElementById('biz-name').value;
     APP_CONFIG.barName = document.getElementById('biz-name').value;
@@ -1579,7 +1579,7 @@ document.getElementById('save-biz-pass-btn').onclick = async () => {
   btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
 
   try {
-    const { error } = await db.from('settings').upsert({ restaurant_id: RID, key: 'admin_password', value: pass }, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert({ restaurant_id: RID, key: 'admin_password', value: pass }, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     toast('Contraseña actualizada con éxito ✓', 'success');
     document.getElementById('biz-new-password').value = '';
@@ -1604,7 +1604,7 @@ window.togglePasswordView = (id) => {
 
 // ── CONFIGURACIÓN ─────────────────────────────────────────
 async function loadConfigTab() {
-  const { data } = await db.from('settings').select('*').eq('restaurant_id', RID);
+  const { data } = await db().from('settings').select('*').eq('restaurant_id', RID);
   if (!data) return;
   const map = { ejs_admin_email:'ejs-admin-email', ejs_public_key:'ejs-public-key', ejs_service_id:'ejs-service-id', ejs_template_admin:'ejs-template-admin', ejs_template_client:'ejs-template-client' };
   Object.entries(map).forEach(([key, elId]) => {
@@ -1628,7 +1628,7 @@ if(document.getElementById('save-limits-btn')) {
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
     const val = document.getElementById('cfg-limit-pax').value;
     try {
-      const { error } = await db.from('settings').upsert({ restaurant_id: RID, key: 'limit_pax', value: val }, { onConflict: 'restaurant_id,key' });
+      const { error } = await db().from('settings').upsert({ restaurant_id: RID, key: 'limit_pax', value: val }, { onConflict: 'restaurant_id,key' });
       if (error) throw error;
       toast('Límite guardado ✓','success');
     } catch(err) {
@@ -1654,7 +1654,7 @@ document.getElementById('save-ejs-btn').onclick = async () => {
   payload.push({ restaurant_id: RID, key: 'auto_confirm', value: autoConf ? 'true' : 'false' });
 
   try {
-    const { error } = await db.from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     toast('Preferencias guardadas ✓','success');
   } catch(err) {
@@ -1720,7 +1720,7 @@ async function loadQR() {
   QRCode.toCanvas(canvas, url, { width: 240, margin: 2, color: { dark: color, light:'#ffffff' } });
 
   try {
-    const { data: qData } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'qr_scans').maybeSingle();
+    const { data: qData } = await db().from('settings').select('value').eq('restaurant_id', RID).eq('key', 'qr_scans').maybeSingle();
     const scans = qData?.value || 0;
     if(document.getElementById('qr-scan-count')) document.getElementById('qr-scan-count').innerHTML = `<i class="fas fa-chart-line"></i> Escaneos Totales: ${scans}`;
   } catch(e) {}
@@ -1769,8 +1769,8 @@ async function loadMetrics() {
       views = { 'carta': 124, 'reservas': 89, 'raciones': 56, 'hamburguesas': 43, 'bebidas': 31 };
     } else {
       const [resData, viewsData] = await Promise.all([
-        db.from('reservations').select('*').eq('restaurant_id', APP_CONFIG.restaurantId).gte('date', dateStr),
-        db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
+        db().from('reservations').select('*').eq('restaurant_id', APP_CONFIG.restaurantId).gte('date', dateStr),
+        db().from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
       ]);
       res = (resData.data || []).filter(r => r.status !== 'cancelled');
       if (viewsData.data && viewsData.data.value) {
@@ -1854,8 +1854,8 @@ document.getElementById('refresh-metrics-btn').onclick = loadMetrics;
 // ── ONBOARDING SAAS ─────────────────────────────────────────
 async function checkOnboarding() {
   try {
-    const { data: prods } = await db.from('menu_items').select('id').eq('restaurant_id', RID).limit(1);
-    const { data: sched } = await db.from('settings').select('id').eq('restaurant_id', RID).eq('key', 'weekly_schedule').maybeSingle();
+    const { data: prods } = await db().from('menu_items').select('id').eq('restaurant_id', RID).limit(1);
+    const { data: sched } = await db().from('settings').select('id').eq('restaurant_id', RID).eq('key', 'weekly_schedule').maybeSingle();
     
     const hasPlato = prods && prods.length > 0;
     const hasHorario = !!sched;
@@ -1889,9 +1889,9 @@ let dragOffset = { x: 0, y: 0 };
 async function loadTablesMap() {
   const selectedDate = document.getElementById('admin-date-select').value || new Date().toISOString().split('T')[0];
   const [tablesRes, zonesRes, resRes] = await Promise.all([
-    db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle(),
-    db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'zones_config').maybeSingle(),
-    db.from('reservations').select('notes').eq('date', selectedDate).eq('restaurant_id', RID)
+    db().from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle(),
+    db().from('settings').select('value').eq('restaurant_id', RID).eq('key', 'zones_config').maybeSingle(),
+    db().from('reservations').select('notes').eq('date', selectedDate).eq('restaurant_id', RID)
   ]);
   
   tablesData = [];
@@ -2148,7 +2148,7 @@ document.getElementById('save-tables-btn').onclick = async () => {
     { restaurant_id: RID, key: 'zones_config', value: JSON.stringify(zonesData) }
   ];
   try {
-    const { error } = await db.from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
+    const { error } = await db().from('settings').upsert(payload, { onConflict: 'restaurant_id,key' });
     if (error) throw error;
     toast('Configuración de Zonas y Mesas guardada', 'success');
   } catch(err) {
@@ -2161,7 +2161,7 @@ document.getElementById('save-tables-btn').onclick = async () => {
 
 // ── INTEGRACIONES ──────────────────────────────────────────
 async function loadIntegrations() {
-  const { data } = await db.from('settings').select('*').eq('restaurant_id', RID);
+  const { data } = await db().from('settings').select('*').eq('restaurant_id', RID);
   const get = k => data?.find(s => s.key === k)?.value;
   
   if (document.getElementById('gcal-id')) {
@@ -2180,7 +2180,7 @@ async function loadIntegrations() {
 if (document.getElementById('save-gcal-btn')) {
   document.getElementById('save-gcal-btn').onclick = async () => {
     const id = document.getElementById('gcal-id').value.trim();
-    await db.from('settings').upsert({ restaurant_id: RID, key: 'gcal_id', value: id }, { onConflict: 'restaurant_id,key' });
+    await db().from('settings').upsert({ restaurant_id: RID, key: 'gcal_id', value: id }, { onConflict: 'restaurant_id,key' });
     toast('Configuración de Google Calendar guardada ✓', 'success');
   };
 }

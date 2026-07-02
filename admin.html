@@ -802,12 +802,23 @@ Entrecot de Ternera 24.00" style="font-family:monospace; resize:vertical; line-h
 
 
 <!-- Scripts cargados UNA sola vez -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <script src="config.js"></script>
-<script src="admin.js?v=2.3"></script>
+<script>
+// Esperar a que supabase y APP_CONFIG estén listos antes de cargar admin.js
+(function waitForDeps() {
+  if (typeof window.supabase === 'undefined' || typeof window.APP_CONFIG === 'undefined') {
+    setTimeout(waitForDeps, 50);
+    return;
+  }
+  var s = document.createElement('script');
+  s.src = 'admin.js?v=2.4';
+  document.body.appendChild(s);
+}).call(this);
+</script>
 
 
 <script>
