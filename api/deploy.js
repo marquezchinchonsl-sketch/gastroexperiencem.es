@@ -192,20 +192,14 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        log('Creating deployment with fileSha1Map...');
-        const fileSha1Map = {};
-        for (const f of fileDataList) {
-          const content = Buffer.from(f.data, 'base64');
-          fileSha1Map['/' + f.file] = createHash('sha1').update(content).digest('hex');
-        }
-        
-        log('fileSha1Map has', Object.keys(fileSha1Map).length, 'entries');
+        log('Creating deployment with files array...');
         
         const deployPayload = {
           name: repoName,
-          fileSha1Map,
+          files: fileDataList,
         };
         
+        log('Files array size:', fileDataList.length);
         log('Sending deployment request...');
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
