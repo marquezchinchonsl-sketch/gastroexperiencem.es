@@ -33,7 +33,8 @@ module.exports = async function handler(req, res) {
   const repoName = `gastroexperiencem-${slug}`;
   const newRepoFullName = `marquezchinchonsl-sketch/${repoName}`;
 
-  const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
+  const logLines = [];
+  const log = (...a) => { const msg = `[${new Date().toISOString()}] ` + a.map(x=>String(x)).join(' '); logLines.push(msg); console.log(msg); };
 
   const exec = (cmd, opts = {}) => {
     try {
@@ -79,11 +80,11 @@ module.exports = async function handler(req, res) {
   log(`=== Deploy: ${name} (${domain}) ===`);
 
   if (!GH_TOKEN) {
-    res.status(500).json({ ok: false, error: 'GH_TOKEN no configurado en Vercel Dashboard → Settings → Environment Variables' });
+    res.status(500).setHeader('Content-Type','application/json').end(JSON.stringify({ ok: false, error: 'GH_TOKEN no configurado. Añádelo en Vercel Dashboard → Settings → Environment Variables' }));
     return;
   }
   if (!VERCEL_TOKEN) {
-    res.status(500).json({ ok: false, error: 'VERCEL_TOKEN no configurado en Vercel Dashboard → Settings → Environment Variables' });
+    res.status(500).setHeader('Content-Type','application/json').end(JSON.stringify({ ok: false, error: 'VERCEL_TOKEN no configurado. Añádelo en Vercel Dashboard → Settings → Environment Variables' }));
     return;
   }
 
@@ -201,7 +202,7 @@ module.exports = async function handler(req, res) {
     try { exec(`rm -rf "${workDir}"`, { ignoreError: true }); } catch {}
 
     log(`=== DONE: ${name} ===`);
-    res.json({
+    const response = {
       ok: true, domain, restaurant_id, repoName,
       url: vercelUrl ? `https://${vercelUrl}.vercel.app` : `https://${domain}`,
       adminUrl: vercelUrl ? `https://${vercelUrl}.vercel.app/admin` : `https://${domain}/admin`,
@@ -209,12 +210,15 @@ module.exports = async function handler(req, res) {
       message: vercelUrl
         ? `Cliente "${name}" creado y desplegado en Vercel!`
         : `Cliente "${name}" creado en GitHub. Despliegue en Vercel pendiente.`,
-    });
+      logs: logLines.slice(-20), // last 20 log lines for debugging
+    };
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify(response));
 
   } catch(e) {
     log('ERROR:', e.message);
     try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
     try { exec(`rm -rf "${workDir}"`, { ignoreError: true }); } catch {}
-    res.status(500).json({ ok: false, error: e.message });
+    res.status(500).setHeader('Content-Type','application/json').end(JSON.stringify({ ok: false, error: e.message, logs: logLines.slice(-10) }));
   }
 };
