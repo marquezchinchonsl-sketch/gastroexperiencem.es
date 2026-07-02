@@ -192,18 +192,17 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        // Upload files to Vercel storage using their large file protocol
-        log('Uploading files via Vercel storage API...');
+        log('Uploading files to Vercel storage...');
+        const fileSha1Map = {};
         
         for (const f of fileDataList) {
           const content = Buffer.from(f.data, 'base64');
           const sha1 = createHash('sha1').update(content).digest('hex');
+          fileSha1Map['/' + f.file] = sha1;
           
           const uploadResult = await new Promise((resolve, reject) => {
             const opts = {
-              hostname: 'api.vercel.com',
-              path: '/v1/files',
-              method: 'POST',
+              hostname: 'api.vercel.com', path: '/v1/files', method: 'POST',
               headers: {
                 'Authorization': `Bearer ${VERCEL_TOKEN}`,
                 'Content-Type': 'application/octet-stream',
@@ -223,26 +222,10 @@ module.exports = async function handler(req, res) {
             req.write(content);
             req.end();
           });
-          
-          log(`Upload ${f.file}: ${uploadResult.status} ${uploadResult.status === 200 ? 'OK' : JSON.stringify(uploadResult.data).slice(0,50)}`)
-          }
+          log(`Upload ${f.file}: ${uploadResult.status}`);
         }
-        log('All files uploaded to Vercel storage');
+        log('All files uploaded. Creating deployment...');
         
-        const fileSha1Map = {};
-        for (const f of fileDataList) {
-          const content = Buffer.from(f.data, 'base64');
-          fileSha1Map['/' + f.file] = createHash('sha1').update(content).digest('hex');
-        }
-        
-        log('Creating deployment with SHA1 map...');
-        const deployPayload = {
-          name: repoName,
-          fileSha1Map,
-        };
-        log('Deploy payload keys:', Object.keys(deployPayload).join(', '));
-        log('fileSha1Map type:', typeof deployPayload.fileSha1Map, 'entries:', Object.keys(deployPayload.fileSha1Map).length);
-
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
