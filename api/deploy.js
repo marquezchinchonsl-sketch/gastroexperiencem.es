@@ -1,9 +1,11 @@
 /**
  * Vercel Serverless Function — /api/deploy
- * POST: Crea repo GitHub, copia template via API REST, despliega en Vercel, registra en BD
+ * POST: Crea repo GitHub, sube template, despliega en Vercel via CLI, registra en BD
  */
 const https = require('https');
-const http = require('http');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,6 +35,21 @@ module.exports = async function handler(req, res) {
 
   const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 
+  const exec = (cmd, opts = {}) => {
+    try {
+      return execSync(cmd, {
+        shell: '/bin/bash',
+        timeout: opts.timeout || 120000,
+        encoding: 'utf8',
+        stdio: opts.silent ? 'pipe' : 'inherit',
+        ...opts,
+      })?.toString().trim() || '';
+    } catch (e) {
+      if (opts.ignoreError) return null;
+      return e.stdout?.toString() || e.message;
+    }
+  };
+
   // ── HTTP helpers ────────────────────────────────────────
   const httpsRequest = (method, urlStr, postData, headers = {}) => {
     return new Promise((resolve, reject) => {
@@ -59,31 +76,18 @@ module.exports = async function handler(req, res) {
     return httpsRequest(method, `https://api.github.com${pathStr}`, postData, h);
   };
 
-  const ghRaw = (method, urlStr, headers = {}) => {
-    return new Promise((resolve, reject) => {
-      const u = new URL(urlStr);
-      const opts = { hostname: u.hostname, path: u.pathname + u.search, method, headers };
-      const req = https.request(opts, res => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          resolve({ status: 302, redirect: res.headers.location });
-          return;
-        }
-        let d = []; res.on('data', c => d.push(c)); res.on('end', () => {
-          const buf = Buffer.concat(d);
-          resolve({ status: res.statusCode, data: buf, isBuffer: true });
-        });
-      });
-      req.on('error', reject);
-      req.end();
-    });
-  };
-
   log(`=== Deploy: ${name} (${domain}) ===`);
 
   if (!GH_TOKEN) {
-    res.status(500).json({ ok: false, error: 'GH_TOKEN no configurado. Añádelo en Vercel Dashboard → Settings → Environment Variables' });
+    res.status(500).json({ ok: false, error: 'GH_TOKEN no configurado en Vercel Dashboard → Settings → Environment Variables' });
     return;
   }
+  if (!VERCEL_TOKEN) {
+    res.status(500).json({ ok: false, error: 'VERCEL_TOKEN no configurado en Vercel Dashboard → Settings → Environment Variables' });
+    return;
+  }
+
+  const workDir = `/tmp/gastro-vercel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
     // ── 1. Create GitHub repo ─────────────────────────────
@@ -96,77 +100,20 @@ module.exports = async function handler(req, res) {
     if (createResult.status === 201) {
       log('Repo created');
     } else if (String(createResult.data).includes('already_exists') || createResult.status === 422) {
-      log('Repo already exists, continuing');
+      log('Repo already exists');
     } else {
       throw new Error(`GitHub repo create: ${createResult.status} ${JSON.stringify(createResult.data).slice(0, 100)}`);
     }
 
-    // ── 2. Get template repo file tree ────────────────────
-    log('2. Getting template file list...');
-    const treeResult = await gh('GET', `/repos/${TEMPLATE_REPO}/git/trees/main?recursive=1`);
-    if (treeResult.status !== 200) {
-      throw new Error(`Template tree: ${treeResult.status}`);
-    }
+    // ── 2. Clone template repo ────────────────────────────
+    log('2. Cloning template repo...');
+    exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}"`, { timeout: 60000 });
+    log('Clone done');
 
-    const tree = treeResult.data.tree || [];
-    const files = tree.filter(t => t.type === 'blob' && !t.path.includes('.git/'));
-    log(`Template has ${files.length} files`);
-
-    // ── 3. Copy each file to new repo via API ─────────────
-    log('3. Copying files to new repo...');
-    const fileCount = { ok: 0, skip: 0, err: 0 };
-
-    for (const file of files) {
-      const filePath = decodeURIComponent(file.path);
-      const newPath = encodeURIComponent(filePath);
-
-      // Get file content from template
-      const rawUrl = `https://raw.githubusercontent.com/${TEMPLATE_REPO}/main/${filePath}`;
-      const raw = await ghRaw('GET', rawUrl, { 'Authorization': `Bearer ${GH_TOKEN}` });
-
-      if (raw.status !== 200) {
-        log(`Skip ${filePath}: raw ${raw.status}`);
-        fileCount.skip++;
-        continue;
-      }
-
-      const content = raw.isBuffer ? raw.data.toString('base64') : Buffer.from(raw.data).toString('base64');
-
-      // Check if file exists in new repo to get SHA
-      let sha = null;
-      const checkResult = await gh('GET', `/repos/${newRepoFullName}/contents/${newPath}?ref=main`);
-      if (checkResult.status === 200 && checkResult.data.sha) {
-        sha = checkResult.data.sha;
-      }
-
-      // Upload to new repo
-      const updateData = {
-        message: filePath === 'config.js'
-          ? `Setup: ${name} [${restaurant_id}]`
-          : `Add ${filePath}`,
-        content,
-        sha: sha || undefined,
-        branch: 'main',
-      };
-
-      const uploadResult = await gh('PUT', `/repos/${newRepoFullName}/contents/${newPath}`, updateData);
-
-      if (uploadResult.status === 200 || uploadResult.status === 201) {
-        fileCount.ok++;
-      } else {
-        fileCount.err++;
-        log(`Upload error ${filePath}: ${uploadResult.status} ${JSON.stringify(uploadResult.data).slice(0, 50)}`);
-      }
-    }
-    log(`Files: ${fileCount.ok} ok, ${fileCount.skip} skipped, ${fileCount.err} errors`);
-
-    // ── 4. Update config.js specifically ───────────────────
-    log('4. Updating config.js with client data...');
-    const configRawUrl = `https://raw.githubusercontent.com/${TEMPLATE_REPO}/main/config.js`;
-    const configRaw = await ghRaw('GET', configRawUrl, { 'Authorization': `Bearer ${GH_TOKEN}` });
-
-    if (configRaw.status === 200) {
-      let configContent = configRaw.data.toString('utf8');
+    // ── 3. Update config.js ────────────────────────────────
+    const configPath = path.join(workDir, 'config.js');
+    if (fs.existsSync(configPath)) {
+      let content = fs.readFileSync(configPath, 'utf8');
       const replacements = {
         barName: name,
         barCity: city,
@@ -176,98 +123,44 @@ module.exports = async function handler(req, res) {
       };
       for (const [key, value] of Object.entries(replacements)) {
         const escaped = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : JSON.stringify(value);
-        configContent = configContent.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
+        content = content.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
       }
-
-      const newConfigContent = Buffer.from(configContent).toString('base64');
-      const checkCfg = await gh('GET', `/repos/${newRepoFullName}/contents/config.js?ref=main`);
-      const cfgSha = checkCfg.status === 200 ? checkCfg.data.sha : null;
-
-      const cfgUpload = await gh('PUT', `/repos/${newRepoFullName}/contents/config.js`, {
-        message: `Setup config: ${name}`,
-        content: newConfigContent,
-        sha: cfgSha || undefined,
-        branch: 'main',
-      });
-      log('config.js updated:', cfgUpload.status);
+      fs.writeFileSync(configPath, content);
+      log('config.js updated');
     }
 
-    // ── 5. Get GitHub repo ID ─────────────────────────────
-    let githubRepoId = null;
-    try {
-      const repoInfo = await gh('GET', `/repos/${newRepoFullName}`);
-      if (repoInfo.status === 200 && repoInfo.data.id) {
-        githubRepoId = repoInfo.data.id;
-        log('GitHub repo ID:', githubRepoId);
-      }
-    } catch(e) { log('Could not get GitHub repo ID'); }
+    // ── 4. Push to new GitHub repo ────────────────────────
+    log('4. Setting up git and pushing...');
+    exec(`cd "${workDir}" && git config user.email "deploy@masreservas.es" && git config user.name "MasReservas" && rm -rf .git && git init && git add -A && git commit -m "Setup: ${name} [${restaurant_id}]"`, { timeout: 30000 });
+    exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force`, { timeout: 60000 });
+    log('Git push done');
 
-    // ── 5. Deploy to Vercel ───────────────────────────────
+    // ── 5. Deploy to Vercel via CLI ──────────────────────
     let vercelUrl = '';
-    if (VERCEL_TOKEN) {
-      log('5. Creating Vercel project...');
-      try {
-        // Check if project already exists
+    log('5. Deploying to Vercel...');
+    try {
+      const vercelOut = exec(
+        `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard`,
+        { timeout: 180000 }
+      );
+      log('Vercel output:', vercelOut.slice(-200));
+
+      // Extract URL from output
+      const urlMatch = vercelOut.match(/https:\/\/[^\s]+\.vercel\.app/);
+      if (urlMatch) {
+        vercelUrl = urlMatch[0].replace('https://', '').replace('.vercel.app', '');
+        log('Vercel deployed:', vercelUrl);
+      } else {
+        log('Vercel URL not found in output, checking...');
+        // Try to find project URL via API
         const projList = await httpsRequest('GET', `https://api.vercel.com/v13/projects?search=${repoName}&limit=1`,
           null, { 'Authorization': `Bearer ${VERCEL_TOKEN}` });
-        let projectId = null;
-
         if (projList.status === 200 && projList.data.projects?.length > 0) {
-          projectId = projList.data.projects[0].id;
-          log('Using existing Vercel project:', projectId);
-        } else {
-          log('Creating new Vercel project...');
-          const vCreate = await httpsRequest('POST', `https://api.vercel.com/v13/projects`,
-            { name: repoName, gitRepository: { repo: newRepoFullName, type: 'github' } },
-            { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
-          );
-          if (vCreate.status === 200 || vCreate.status === 201) {
-            projectId = vCreate.data.id;
-            log('Vercel project created:', projectId);
-          } else {
-            log('Vercel project create failed:', vCreate.status, JSON.stringify(vCreate.data).slice(0, 100));
-          }
+          vercelUrl = projList.data.projects[0].name;
         }
-
-        if (projectId) {
-          log('Triggering Vercel deployment...');
-          // Use project-scoped deployment
-          const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments?projectId=${projectId}`,
-            {
-              name: repoName,
-              gitSource: { repoId: String(githubRepoId), ref: 'main', type: 'github' },
-            },
-            { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
-          );
-
-          if (vDeploy.status === 200 || vDeploy.status === 201) {
-            vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
-            log('Vercel deployed:', vercelUrl);
-          } else {
-            log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
-          }
-        } else if (githubRepoId) {
-          // Fallback: create deployment without projectId
-          const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
-            {
-              name: repoName,
-              gitSource: { repoId: String(githubRepoId), ref: 'main', type: 'github' },
-            },
-            { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
-          );
-
-          if (vDeploy.status === 200 || vDeploy.status === 201) {
-            vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
-            log('Vercel deployed:', vercelUrl);
-          } else {
-            log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
-          }
-        }
-      } catch (e) {
-        log('Vercel error:', e.message);
       }
-    } else {
-      log('VERCEL_TOKEN not set — skipping Vercel deploy (will be manual)');
+    } catch (e) {
+      log('Vercel deploy error:', e.message.slice(0, 100));
     }
 
     // ── 6. Register in Supabase ───────────────────────────
@@ -296,17 +189,25 @@ module.exports = async function handler(req, res) {
       log('Supabase registration:', bdRes.status);
     } catch(e) { log('Supabase error:', e.message); }
 
+    // ── 7. Cleanup ────────────────────────────────────────
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
+    try { exec(`rm -rf "${workDir}"`, { ignoreError: true }); } catch {}
+
     log(`=== DONE: ${name} ===`);
     res.json({
       ok: true, domain, restaurant_id, repoName,
-      url: vercelUrl ? `https://${vercelUrl}` : `https://${repoName}.vercel.app`,
-      adminUrl: vercelUrl ? `https://${vercelUrl}/admin` : `https://${repoName}.vercel.app/admin`,
+      url: vercelUrl ? `https://${vercelUrl}.vercel.app` : `https://${domain}`,
+      adminUrl: vercelUrl ? `https://${vercelUrl}.vercel.app/admin` : `https://${domain}/admin`,
       githubUrl: `https://github.com/${newRepoFullName}`,
-      message: `Cliente "${name}" creado. ${vercelUrl ? 'Desplegado en Vercel.' : 'Repo GitHub creado. Despliegue manual pendiente.'}`,
+      message: vercelUrl
+        ? `Cliente "${name}" creado y desplegado en Vercel!`
+        : `Cliente "${name}" creado en GitHub. Despliegue en Vercel pendiente.`,
     });
 
   } catch(e) {
     log('ERROR:', e.message);
+    try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
+    try { exec(`rm -rf "${workDir}"`, { ignoreError: true }); } catch {}
     res.status(500).json({ ok: false, error: e.message });
   }
 };
