@@ -140,8 +140,8 @@ module.exports = async function handler(req, res) {
     log('5. Deploying to Vercel...');
     try {
       const vercelOut = exec(
-        `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard`,
-        { timeout: 180000 }
+        `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard 2>&1`,
+        { timeout: 180000, silent: true }
       );
       log('Vercel output:', vercelOut.slice(-200));
 
