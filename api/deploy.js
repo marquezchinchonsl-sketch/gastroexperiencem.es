@@ -196,7 +196,7 @@ module.exports = async function handler(req, res) {
         
         for (const f of fileDataList) {
           const content = Buffer.from(f.data, 'base64');
-          const sha1 = crypto.createHash('sha1').update(content).digest('hex');
+          const sha1 = createHash('sha1').update(content).digest('hex');
           
           const uploadResult = await new Promise((resolve, reject) => {
             const opts = {
@@ -232,7 +232,7 @@ module.exports = async function handler(req, res) {
         const fileSha1Map = {};
         for (const f of fileDataList) {
           const content = Buffer.from(f.data, 'base64');
-          fileSha1Map['/' + f.file] = crypto.createHash('sha1').update(content).digest('hex');
+          fileSha1Map['/' + f.file] = createHash('sha1').update(content).digest('hex');
         }
         
         log('Creating deployment with SHA1 map...');
