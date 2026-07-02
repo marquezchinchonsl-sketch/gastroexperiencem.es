@@ -108,9 +108,10 @@ module.exports = async function handler(req, res) {
 
     // ── 2. Clone template repo ────────────────────────────
     log('2. Cloning template repo...');
-    const cloneResult = exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}"`, { timeout: 60000 });
-    if (cloneResult && cloneResult.includes('fatal')) { log('Clone failed:', cloneResult.slice(0, 200)); }
-    else { log('Clone done'); }
+    const cloneResult = exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}" 2>&1`, { timeout: 60000 });
+    log('Clone result:', (cloneResult || 'ok').slice(0, 150));
+    const workDirExists = fs.existsSync(workDir);
+    log('workDir exists after clone:', workDirExists, '| content:', workDirExists ? fs.readdirSync(workDir).slice(0, 5) : 'N/A');
 
     // ── 3. Update config.js ────────────────────────────────
     const configPath = path.join(workDir, 'config.js');
