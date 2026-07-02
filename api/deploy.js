@@ -192,56 +192,27 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        log('Uploading files to Vercel storage...');
+        log('Creating deployment with fileSha1Map...');
         const fileSha1Map = {};
-        
         for (const f of fileDataList) {
           const content = Buffer.from(f.data, 'base64');
-          const sha1 = createHash('sha1').update(content).digest('hex');
-          fileSha1Map['/' + f.file] = sha1;
-          
-          const uploadResult = await new Promise((resolve, reject) => {
-            const opts = {
-              hostname: 'api.vercel.com', path: '/v1/files', method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${VERCEL_TOKEN}`,
-                'Content-Type': 'application/octet-stream',
-                'Content-Length': content.length,
-                'x-now-digest': sha1,
-                'x-now-size': content.length.toString(),
-              }
-            };
-            const req = https.request(opts, res => {
-              let d = ''; res.on('data', c => d += c);
-              res.on('end', () => {
-                try { resolve({ status: res.statusCode, data: JSON.parse(d) }); }
-                catch { resolve({ status: res.statusCode, data: d }); }
-              });
-            });
-            req.on('error', reject);
-            req.write(content);
-            req.end();
-          });
-          log(`Upload ${f.file}: ${uploadResult.status}`);
+          fileSha1Map['/' + f.file] = createHash('sha1').update(content).digest('hex');
         }
-        log('All files uploaded. Creating deployment with fileSha1Map...');
+        
+        log('fileSha1Map has', Object.keys(fileSha1Map).length, 'entries');
         
         const deployPayload = {
           name: repoName,
           fileSha1Map,
-          projectSettings: {
-            outputDirectory: '.',
-          },
         };
         
-        log('Sending deployPayload with', Object.keys(deployPayload.fileSha1Map).length, 'files');
-        
+        log('Sending deployment request...');
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
         );
 
-        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 150));
+        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 200));
         if (vDeploy.status === 200 || vDeploy.status === 201) {
           vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
           log('Deployed! URL:', vercelUrl);
