@@ -1,6 +1,6 @@
 /**
  * Vercel Serverless Function — /api/deploy
- * POST: Crea repo GitHub, sube código, despliega en Vercel, registra en BD
+ * POST: Crea repo GitHub desde template, despliega en Vercel, registra en BD
  */
 const https = require('https');
 
@@ -23,12 +23,16 @@ module.exports = async function handler(req, res) {
 
   const GH_TOKEN = process.env.GH_TOKEN;
   const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
-  const VERCEL_TEAM = process.env.VERCEL_TEAM || 'marquezchinchonsl-5863s';
+  const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || 'marquezchinchonsl-5863s';
+  const TEMPLATE_REPO = 'marquezchinchonsl-sketch/gastroexperience-template';
+  const TEMPLATE_URL = `https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git`;
+
+  const SUPABASE_URL = 'https://xornvhqqjovcucpuqgoo.supabase.co';
+  const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwOTUyMjIsImV4cCI6MjA2NTY3MTIyMn0.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA';
+
   const slug = domain.replace(/[^a-z0-9]/gi, '-').toLowerCase();
   const repoName = `gastroexperiencem-${slug}`;
-  const supabaseUrl = 'https://xornvhqqjovcucpuqgoo.supabase.co';
-  const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbG…uwFA';
-  const PROJECT_DIR = '/Users/adrianmarquez/Desktop/gastroexperience copia';
+  const NEW_REPO_URL = `https://github.com/marquezchinchonsl-sketch/${repoName}.git`;
 
   const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 
@@ -37,7 +41,9 @@ module.exports = async function handler(req, res) {
     return new Promise((resolve, reject) => {
       const u = new URL(urlStr);
       const opts = {
-        hostname: u.hostname, path: u.pathname + u.search, method,
+        hostname: u.hostname,
+        path: u.pathname + u.search,
+        method,
         headers: { 'Content-Type': 'application/json', 'User-Agent': 'GastroExperience/1.0', ...extraHeaders },
       };
       const req = https.request(opts, res => {
@@ -58,141 +64,113 @@ module.exports = async function handler(req, res) {
     return httpReq(method, `https://api.github.com${pathStr}`, postData, headers);
   };
 
-  log(`Deploying: ${name} (${domain})`);
+  const exec = (cmd) => {
+    const { execSync } = require('child_process');
+    try {
+      return execSync(cmd, { shell: '/bin/bash', timeout: 120000, encoding: 'utf8', stdio: 'pipe' });
+    } catch (e) { return e.stdout || e.message; }
+  };
+
+  log(`=== Deploy: ${name} (${domain}) ===`);
+  log(`Template: ${TEMPLATE_REPO} -> ${repoName}`);
+
+  if (!GH_TOKEN) {
+    res.status(500).json({ ok: false, error: 'GH_TOKEN not configured in Vercel environment variables' });
+    return;
+  }
 
   try {
-    // ── 1. Read and modify project files ──────────────────
-    const fs = require('fs');
-    const path = require('path');
-    const { execSync } = require('child_process');
-
-    // Create temp dir
-    const workDir = `/tmp/gastro-vercel-${Date.now()}`;
-    fs.mkdirSync(workDir, { recursive: true });
-
-    // Copy project (exclude .git, node_modules, .vercel)
-    execSync(`rsync -a --exclude='.git' --exclude='node_modules' --exclude='.vercel' --exclude='.next' "${PROJECT_DIR}/" "${workDir}/"`, { timeout: 60000 });
-    log('Project copied');
-
-    // Update config.js
-    const configPath = path.join(workDir, 'config.js');
-    if (fs.existsSync(configPath)) {
-      let content = fs.readFileSync(configPath, 'utf8');
-      const replacements = { barName: name, barCity: city, barTagline: 'Cocina de Mercado', siteUrl: `https://${domain}`, restaurantId: restaurant_id };
-      for (const [key, value] of Object.entries(replacements)) {
-        const escaped = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : JSON.stringify(value);
-        content = content.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
-      }
-      fs.writeFileSync(configPath, content);
-      log('config.js updated');
-    }
-
-    // Create tarball of the project
-    const tarPath = `/tmp/repo-${Date.now()}.tar.gz`;
-    execSync(`tar -czf "${tarPath}" -C "${workDir}" .`, { timeout: 30000 });
-    const tarBuffer = fs.readFileSync(tarPath);
-    fs.unlinkSync(tarPath);
-    fs.rmSync(workDir, { recursive: true, force: true });
-    log('Tarball created');
-
-    // ── 2. Create GitHub repo ─────────────────────────────
+    // ── 1. Create new GitHub repo ─────────────────────────
+    log('Creating GitHub repo...');
     const ghResult = await ghReq('POST', '/user/repos', {
-      name: repoName, private: true,
+      name: repoName,
+      private: true,
       description: `GastroExperience - ${name} - ${domain}`,
-      auto_init: false,
     });
 
     if (ghResult.status === 201) {
       log('GitHub repo created');
-    } else if (ghResult.status === 422 || String(ghResult.data).includes('already_exists')) {
-      log('GitHub repo already exists, continuing');
+    } else if (String(ghResult.data).includes('already_exists') || ghResult.status === 422) {
+      log('GitHub repo already exists');
     } else {
-      throw new Error(`GitHub repo create failed: ${ghResult.status} ${JSON.stringify(ghResult.data).slice(0, 100)}`);
+      throw new Error(`GitHub repo create: ${ghResult.status} ${JSON.stringify(ghResult.data).slice(0, 100)}`);
     }
 
-    // ── 3. Upload files to GitHub using git archive + upload ─
-    // Simpler approach: use the GitHub API contents endpoint
-    const fileContents = [
-      { path: 'config.js', src: path.join(PROJECT_DIR, 'config.js') },
-      { path: 'routing.js', src: path.join(PROJECT_DIR, 'routing.js') },
-      { path: 'admin.html', src: path.join(PROJECT_DIR, 'admin.html') },
-      { path: 'admin.js', src: path.join(PROJECT_DIR, 'admin.js') },
-      { path: 'admin.css', src: path.join(PROJECT_DIR, 'admin.css') },
-      { path: 'index.html', src: path.join(PROJECT_DIR, 'index.html') },
-      { path: 'index.css', src: path.join(PROJECT_DIR, 'index.css') },
-      { path: 'carta.html', src: path.join(PROJECT_DIR, 'carta.html') },
-      { path: 'reservas.html', src: path.join(PROJECT_DIR, 'reservas.html') },
-      { path: 'reservas.css', src: path.join(PROJECT_DIR, 'reservas.css') },
-      { path: 'setup.html', src: path.join(PROJECT_DIR, 'setup.html') },
-      { path: 'master-admin.html', src: path.join(PROJECT_DIR, 'master-admin.html') },
-      { path: 'master-admin.js', src: path.join(PROJECT_DIR, 'master-admin.js') },
-      { path: 'master-admin.css', src: path.join(PROJECT_DIR, 'master-admin.css') },
-      { path: 'dashboard.html', src: path.join(PROJECT_DIR, 'dashboard.html') },
-      { path: 'sw.js', src: path.join(PROJECT_DIR, 'sw.js') },
-      { path: 'manifest.json', src: path.join(PROJECT_DIR, 'manifest.json') },
-      { path: 'vercel.json', src: path.join(PROJECT_DIR, 'vercel.json') },
-      { path: 'package.json', src: path.join(PROJECT_DIR, 'package.json') },
-      { path: '.gitignore', src: path.join(PROJECT_DIR, '.gitignore') },
-      { path: '404.html', src: path.join(PROJECT_DIR, '404.html') },
-    ];
+    // ── 2. Clone template repo to temp dir ──────────────
+    const workDir = `/tmp/gastro-clone-${Date.now()}`;
+    exec(`git clone --bare ${TEMPLATE_URL} "${workDir}-bare"`);
+    exec(`git init --bare "${workDir}-bare" 2>/dev/null || true`);
 
-    // Also copy image files
-    const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'];
-    const allFiles = execSync(`find "${PROJECT_DIR}" -type f -not -path "*/.git/*" -not -path "*/node_modules/*" -not -path "*/.vercel/*" -not -path "*/.next/*"`, { encoding: 'utf8' })
-      .split('\n').filter(Boolean);
+    // Clone and push to new repo
+    const cloneResult = exec(`git clone "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}" 2>&1`);
+    log('Clone: ' + cloneResult.slice(0, 100));
 
-    for (const file of allFiles) {
-      const filename = path.basename(file);
-      const ext = filename.split('.').pop().toLowerCase();
-      if (!fileContents.find(f => f.src === file) && (imageExts.includes(ext) || filename.endsWith('.css'))) {
-        fileContents.push({ path: filename, src: file });
+    // Update config.js in the cloned repo
+    const configPath = `${workDir}/config.js`;
+    const { readFileSync, writeFileSync, existsSync } = require('fs');
+    if (existsSync(configPath)) {
+      let content = readFileSync(configPath, 'utf8');
+      const replacements = {
+        barName: name,
+        barCity: city,
+        barTagline: 'Cocina de Mercado',
+        siteUrl: `https://${domain}`,
+        restaurantId: restaurant_id,
+      };
+      for (const [key, value] of Object.entries(replacements)) {
+        const escaped = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : JSON.stringify(value);
+        content = content.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
       }
+      writeFileSync(configPath, content);
+      log('config.js updated');
     }
 
-    log(`Uploading ${fileContents.length} files to GitHub...`);
+    // Set up git for the new repo
+    exec(`cd "${workDir}" && git config user.email "deploy@masreservas.es" && git config user.name "MasReservas Deploy"`);
+    exec(`cd "${workDir}" && git add -A && git commit -m "Setup: ${name} [${restaurant_id}]" || true`);
+    exec(`cd "${workDir}" && git remote set-url origin "https://${GH_TOKEN}@github.com/marquezchinchonsl-sketch/${repoName}.git"`);
+    const pushResult = exec(`cd "${workDir}" && git push -u origin main --force 2>&1`);
+    log('Push: ' + pushResult.slice(0, 100));
 
-    for (const { path: filePath, src } of fileContents) {
-      if (!fs.existsSync(src)) continue;
-      const content = fs.readFileSync(src).toString('base64');
-      const encodedPath = encodeURIComponent(filePath);
-      const uploadResult = await ghReq('PUT', `/repos/marquezchinchonsl-sketch/${repoName}/contents/${encodedPath}`, {
-        message: `Add ${filePath}`,
-        content,
-        branch: 'main',
-      });
-      if (uploadResult.status !== 201 && uploadResult.status !== 200) {
-        log(`Upload warning: ${filePath} -> ${uploadResult.status}`);
-      }
-    }
-    log('Files uploaded to GitHub');
-
-    // ── 4. Deploy to Vercel ────────────────────────────────
+    // ── 3. Deploy to Vercel ───────────────────────────────
     let vercelUrl = '';
     if (VERCEL_TOKEN) {
       log('Creating Vercel project...');
-      const vCreate = await httpReq('POST', `https://api.vercel.com/v13/projects`,
-        { name: repoName, gitRepository: { repo: `marquezchinchonsl-sketch/${repoName}`, type: 'github' } },
-        { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
-      );
-      log('Vercel project:', vCreate.status, JSON.stringify(vCreate.data).slice(0, 100));
-
-      if (vCreate.status === 200 || vCreate.status === 201) {
-        const projectId = vCreate.data.id;
-        log('Deploying to Vercel...');
-        const vDeploy = await httpReq('POST', `https://api.vercel.com/v13/deployments`,
-          { name: repoName, gitSource: { repo: `marquezchinchonsl-sketch/${repoName}`, ref: 'main', type: 'github' } },
+      try {
+        const vCreate = await httpReq('POST', `https://api.vercel.com/v13/projects`,
+          { name: repoName, gitRepository: { repo: `marquezchinchonsl-sketch/${repoName}`, type: 'github' } },
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
         );
-        if (vDeploy.status === 200 || vDeploy.status === 201) {
-          vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
-          log('Vercel deployment:', vDeploy.status, vercelUrl);
+        log('Vercel create:', vCreate.status, JSON.stringify(vCreate.data).slice(0, 100));
+
+        if (vCreate.status === 200 || vCreate.status === 201) {
+          const projectId = vCreate.data.id;
+          log(`Vercel project ${projectId} created, deploying...`);
+
+          const vDeploy = await httpReq('POST', `https://api.vercel.com/v13/deployments`,
+            {
+              name: repoName,
+              gitSource: { repo: `marquezchinchonsl-sketch/${repoName}`, ref: 'main', type: 'github' },
+              projectId,
+            },
+            { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
+          );
+
+          if (vDeploy.status === 200 || vDeploy.status === 201) {
+            vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
+            log('Vercel deployed:', vercelUrl);
+          } else {
+            log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
+          }
         }
+      } catch (e) {
+        log('Vercel error:', e.message);
       }
     } else {
       log('VERCEL_TOKEN not set, skipping Vercel deploy');
     }
 
-    // ── 5. Register in Supabase ───────────────────────────
+    // ── 4. Register in Supabase ───────────────────────────
     const rows = [
       { restaurant_id, key: 'bar_name', value: name },
       { restaurant_id, key: 'bar_city', value: city },
@@ -201,21 +179,24 @@ module.exports = async function handler(req, res) {
       { restaurant_id, key: 'domain', value: domain },
       { restaurant_id, key: 'subdomain', value: slug },
       { restaurant_id, key: 'restaurant_id', value: restaurant_id },
-      { restaurant_id, key: 'supabase_url', value: supabaseUrl },
-      { restaurant_id, key: 'supabase_key', value: supabaseKey },
+      { restaurant_id, key: 'supabase_url', value: SUPABASE_URL },
+      { restaurant_id, key: 'supabase_key', value: SUPABASE_KEY },
       { restaurant_id, key: 'admin_password', value: 'admin1234' },
       { restaurant_id, key: 'status', value: 'active' },
       { restaurant_id, key: 'created_at', value: new Date().toISOString() },
     ];
 
     try {
-      const bdRes = await fetch(`${supabaseUrl}/rest/v1/settings`, {
+      const bdRes = await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
         method: 'POST',
-        headers: { 'apikey': supabaseKey, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
         body: JSON.stringify(rows)
       });
       log('Supabase registration:', bdRes.status);
     } catch(e) { log('Supabase error:', e.message); }
+
+    // Cleanup
+    exec(`rm -rf "${workDir}" "${workDir}-bare" 2>/dev/null || true`);
 
     log(`=== DONE: ${name} ===`);
     res.json({
@@ -223,7 +204,7 @@ module.exports = async function handler(req, res) {
       url: vercelUrl ? `https://${vercelUrl}` : `https://${domain}`,
       adminUrl: vercelUrl ? `https://${vercelUrl}/admin` : `https://${domain}/admin`,
       githubUrl: `https://github.com/marquezchinchonsl-sketch/${repoName}`,
-      message: `Cliente "${name}" creado`,
+      message: `Cliente "${name}" creado y desplegado`,
     });
 
   } catch(e) {
