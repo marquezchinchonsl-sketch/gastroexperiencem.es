@@ -240,11 +240,6 @@ module.exports = async function handler(req, res) {
         const deployPayload = {
           name: repoName,
           fileSha1Map,
-          projectSettings: {
-            outputDirectory: '.',
-            buildCommand: null,
-            framework: null,
-          },
         };
 
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
