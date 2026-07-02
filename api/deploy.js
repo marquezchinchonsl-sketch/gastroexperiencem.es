@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
         shell: '/bin/bash',
         timeout: opts.timeout || 120000,
         encoding: 'utf8',
-        stdio: opts.silent ? 'pipe' : 'inherit',
+        stdio: 'pipe',
         ...opts,
       })?.toString().trim() || '';
     } catch (e) {
