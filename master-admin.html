@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GastroExperience — Master Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="master-admin.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="logo-icon">🍽️</span>
+      <h2>Master Admin</h2>
+      <p>Acceso restringido — GastroExperience SaaS</p>
+    </div>
+    <div class="login-fields">
+      <input type="password" id="master-password" placeholder="Contraseña Maestra">
+      <button id="login-btn"><i class="fas fa-fingerprint"></i> Acceder</button>
+    </div>
+    <p id="login-error" class="login-error"></p>
+    <div class="login-footer">
+      <small>Solo para administradores del sistema</small>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app-layout" id="app" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-area">
+        <span class="logo-icon">🍽️</span>
+        <div>
+          <h1>Master Admin</h1>
+          <p>GastroExperience</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="admin-nav">
+      <button class="nav-tab active" data-tab="overview"><i class="fas fa-globe"></i> Vista General</button>
+      <button class="nav-tab" data-tab="restaurants"><i class="fas fa-store"></i> Restaurantes</button>
+      <button class="nav-tab" data-tab="create"><i class="fas fa-plus-circle"></i> Nuevo Cliente</button>
+      <button class="nav-tab" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
+      <button class="nav-tab" data-tab="system"><i class="fas fa-server"></i> Sistema</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="system-status">
+        <span class="status-dot online"></span>
+        <span id="system-status-text">Sistema operativo</span>
+      </div>
+      <a href="admin.html" class="back-link"><i class="fas fa-user-shield"></i> Admin Restaurante</a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-wrapper">
+    <header class="topbar">
+      <div class="topbar-title" id="admin-title">Panel de Control — GastroExperience</div>
+      <div class="user-info">
+        <span>Super Administrador</span>
+        <div class="avatar"><i class="fas fa-crown"></i></div>
+      </div>
+    </header>
+
+    <main class="dashboard-container">
+
+      <!-- ═══ OVERVIEW TAB ═══ -->
+      <div id="tab-overview" class="tab-content active-tab">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-globe"></i> Estado del SaaS</h2>
+            <p>Resumen global de todos los restaurantes activos</p>
+          </div>
+          <button class="btn-primary" onclick="openTab('create')"><i class="fas fa-plus"></i> Nuevo Cliente</button>
+        </div>
+
+        <div class="stats-grid" id="overview-stats">
+          <div class="stat-card">
+            <h3><i class="fas fa-store"></i> Restaurantes Totales</h3>
+            <p class="stat-number" id="total-restaurants">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-calendar-check"></i> Reservas Hoy</h3>
+            <p class="stat-number" id="reservations-today">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-users"></i> Cubiertos Hoy</h3>
+            <p class="stat-number" id="covers-today">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-fire"></i> Tasa Confirmación</h3>
+            <p class="stat-number" id="confirmation-rate">-</p>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3><i class="fas fa-list"></i> Actividad Reciente (últimas 24h)</h3>
+          <div id="recent-activity" class="activity-list">
+            <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando actividad...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ RESTAURANTS TAB ═══ -->
+      <div id="tab-restaurants" class="tab-content">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-store"></i> Restaurantes</h2>
+            <p>Gestiona todos los restaurantes del SaaS</p>
+          </div>
+          <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="search-restaurants" placeholder="Buscar restaurante...">
+          </div>
+        </div>
+
+        <div class="restaurants-table-container">
+          <table class="restaurants-table">
+            <thead>
+              <tr>
+                <th>Restaurante</th>
+                <th>Ciudad</th>
+                <th>Subdominio</th>
+                <th>Reservas (7d)</th>
+                <th>Cubiertos (7d)</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="restaurants-body">
+              <tr><td colspan="7" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══ CREATE NEW CLIENT TAB ═══ -->
+      <div id="tab-create" class="tab-content">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-plus-circle"></i> Nuevo Cliente</h2>
+            <p>Crea un nuevo restaurante en segundos — subdominio automático</p>
+          </div>
+        </div>
+
+        <div class="create-wizard">
+          <!-- Step 1: Info -->
+          <div class="wizard-step active" id="step-info">
+            <div class="step-header">
+              <span class="step-number">1</span>
+              <h3>Información del Restaurante</h3>
+            </div>
+            <div class="step-content">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Nombre del Restaurante *</label>
+                  <input type="text" id="new-name" placeholder="Ej: Bar La Esquina" oninput="previewSubdomain()">
+                </div>
+                <div class="form-group">
+                  <label>Ciudad</label>
+                  <input type="text" id="new-city" placeholder="Ej: Madrid">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Email del Administrador</label>
+                  <input type="email" id="new-email" placeholder="admin@restaurante.com">
+                </div>
+                <div class="form-group">
+                  <label>Teléfono</label>
+                  <input type="text" id="new-phone" placeholder="600 000 000">
+                </div>
+              </div>
+              <div class="subdomain-preview" id="subdomain-preview">
+                <i class="fas fa-globe"></i>
+                <span>Tu URL será: <strong id="subdomain-url">-</strong></span>
+              </div>
+              <button class="btn-primary" onclick="validateStep1()"><i class="fas fa-arrow-right"></i> Siguiente</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Confirm -->
+          <div class="wizard-step" id="step-confirm">
+            <div class="step-header">
+              <span class="step-number">2</span>
+              <h3>Confirmar Configuración</h3>
+            </div>
+            <div class="step-content">
+              <div class="confirm-details" id="confirm-details">
+                <!-- Filled by JS -->
+              </div>
+              <div class="warning-box">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Esto creará un proyecto Supabase nuevo, configurará el subdominio y desplegará automáticamente. El proceso puede tardar 2-4 minutos.</p>
+              </div>
+              <div class="button-row">
+                <button class="btn-surface" onclick="goToStep('step-info')"><i class="fas fa-arrow-left"></i> Volver</button>
+                <button class="btn-primary btn-create" id="btn-start-creation" onclick="startCreation()"><i class="fas fa-rocket"></i> Crear Restaurante</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Creating -->
+          <div class="wizard-step" id="step-creating">
+            <div class="step-header">
+              <span class="step-number"><i class="fas fa-spinner fa-spin"></i></span>
+              <h3>Creando Restaurante...</h3>
+            </div>
+            <div class="step-content">
+              <div class="creation-log" id="creation-log">
+                <div class="log-entry pending" id="log-supabase">
+                  <i class="fas fa-database"></i> Creando proyecto Supabase...
+                </div>
+                <div class="log-entry pending" id="log-config">
+                  <i class="fas fa-cog"></i> Configurando base de datos...
+                </div>
+                <div class="log-entry pending" id="log-deploy">
+                  <i class="fas fa-cloud-upload-alt"></i> Desplegando en Vercel...
+                </div>
+                <div class="log-entry pending" id="log-dns">
+                  <i class="fas fa-network-wired"></i> Configurando subdominio...
+                </div>
+                <div class="log-entry pending" id="log-complete">
+                  <i class="fas fa-check-circle"></i> ¡Restaurante listo!
+                </div>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" id="creation-progress"></div>
+              </div>
+              <p id="creation-status" class="creation-status">Iniciando...</p>
+            </div>
+          </div>
+
+          <!-- Step 4: Done -->
+          <div class="wizard-step" id="step-done">
+            <div class="step-header">
+              <span class="step-number"><i class="fas fa-check-circle" style="color:var(--success)"></i></span>
+              <h3>¡Restaurante Creado!</h3>
+            </div>
+            <div class="step-content">
+              <div class="success-details" id="success-details">
+                <!-- Filled by JS -->
+              </div>
+              <div class="button-row" style="justify-content:center;">
+                <button class="btn-primary" onclick="resetWizard()"><i class="fas fa-plus"></i> Crear Otro</button>
+                <button class="btn-success" onclick="openTab('restaurants')"><i class="fas fa-store"></i> Ver Restaurantes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ANALYTICS TAB ═══ -->
+      <div id="tab-analytics" class="tab-content">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-chart-pie"></i> Analytics Global</h2>
+            <p>Datos agregados de todos los restaurantes</p>
+          </div>
+          <button class="btn-primary" onclick="loadAnalytics()"><i class="fas fa-sync-alt"></i> Actualizar</button>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3><i class="fas fa-calendar-alt"></i> Reservas (30 días)</h3>
+            <p class="stat-number" id="analytics-res-30d">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-users"></i> Cubiertos (30 días)</h3>
+            <p class="stat-number" id="analytics-covers-30d">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-chair"></i> Media pax/reserva</h3>
+            <p class="stat-number" id="analytics-avg-pax">-</p>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-clock"></i> Hora pico global</h3>
+            <p class="stat-number" id="analytics-peak-hour">-</p>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="section-card">
+            <h3>Reservas por Restaurante (últimos 7 días)</h3>
+            <div style="position:relative; height:300px;"><canvas id="chart-by-restaurant"></canvas></div>
+          </div>
+          <div class="section-card">
+            <h3>Distribución por Ciudad</h3>
+            <div style="position:relative; height:300px;"><canvas id="chart-by-city"></canvas></div>
+          </div>
+          <div class="section-card">
+            <h3>Tendencia de Reservas (30 días)</h3>
+            <div style="position:relative; height:300px;"><canvas id="chart-trend"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SYSTEM TAB ═══ -->
+      <div id="tab-system" class="tab-content">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-server"></i> Estado del Sistema</h2>
+            <p>Infraestructura y configuración global</p>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3><i class="fas fa-cloud"></i> Vercel</h3>
+            <p class="stat-ok">✅ Activo</p>
+            <small>gastroexperience.vercel.app</small>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-database"></i> Supabase</h3>
+            <p class="stat-ok">✅ Operativo</p>
+            <small>Gestión + BD restaurantes</small>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-github"></i> GitHub</h3>
+            <p class="stat-ok">✅ Conectado</p>
+            <small>marquezchinchonsl-sketch</small>
+          </div>
+          <div class="stat-card">
+            <h3><i class="fas fa-shield-alt"></i> Dominio</h3>
+            <p class="stat-ok">✅ Wildcard DNS</p>
+            <small>*.gastroexperiencem.es</small>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3><i class="fas fa-info-circle"></i> Información del Sistema</h3>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Proyecto Principal</span>
+              <span class="info-value">gastroexperience</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Dominio</span>
+              <span class="info-value">gastroexperiencem.es</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Dominio API</span>
+              <span class="info-value">api.gastroexperiencem.es</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Repo GitHub</span>
+              <span class="info-value">marquezchinchonsl-sketch/gastroexperiencem</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">BD Supabase Principal</span>
+              <span class="info-value">xornvhqqjovcucpuqgoo</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">URL Admin</span>
+              <span class="info-value">gastroexperiencem.es/admin</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-card">
+          <h3><i class="fas fa-terminal"></i> Acciones Rápidas</h3>
+          <div class="action-buttons">
+            <button class="btn-primary" onclick="triggerDeploy()"><i class="fas fa-sync"></i> Forzar Redeploy</button>
+            <button class="btn-warning" onclick="refreshAllMetrics()"><i class="fas fa-chart-line"></i> Refrescar Métricas</button>
+            <button class="btn-danger" onclick="exportAllData()"><i class="fas fa-download"></i> Exportar Datos</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="master-admin.js"></script>
+</body>
+</html>

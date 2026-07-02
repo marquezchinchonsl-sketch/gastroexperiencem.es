@@ -2,11 +2,11 @@
  * routing.js — GastroExperience Multi-tenant subdomain routing
  * 
  * Lee el subdominio de la URL y carga la config del restaurante
- * correspondiente desde Supabase. Si no hay subdominio (domain raíz),
- * usa la config por defecto de config.js.
+ * correspondiente desde Supabase (tabla 'settings', key='subdomain').
+ * Actualiza APP_CONFIG con las credenciales del restaurante y
+ * re-inicializa el cliente Supabase global para usar la BD correcta.
  * 
- * Para nuevos restaurantes: el script new-client.js crea una entrada
- * en la tabla 'settings' con key='subdomain' y value=<subdomain>.
+ * Si no hay subdominio (dominio raíz), usa config.js por defecto.
  */
 
 (function() {
@@ -51,7 +51,8 @@
 
       const restaurantId = data[0].restaurant_id;
 
-      // Cargar toda la config del restaurante
+      // Cargar toda la config del restaurante desde la MISMA BD
+      // (el proyecto Supabase donde está registrada esta config)
       const configRes = await fetch(
         `${APP_CONFIG.supabaseUrl}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=key,value`,
         {
@@ -64,12 +65,11 @@
       if (!configRes.ok) return null;
       const configData = await configRes.json();
 
-      const cfg = {};
+      const cfg = { restaurant_id: restaurantId };
       for (const row of configData) {
         try { cfg[row.key] = JSON.parse(row.value); } 
         catch { cfg[row.key] = row.value; }
       }
-      cfg.restaurantId = restaurantId;
       return cfg;
     } catch (e) {
       console.error('Error cargando config del restaurante:', e);
@@ -80,38 +80,69 @@
   // ── Aplicar config al APP_CONFIG global ────────────────
   function applyRestaurantConfig(cfg) {
     if (!cfg) return;
-    Object.keys(cfg).forEach(key => {
-      if (key === 'restaurantId') {
-        APP_CONFIG.restaurantId = cfg[key];
-      } else if (key !== 'barName' && key !== 'barTagline' && key !== 'barCity') {
-        // No sobreescribir valores personalizados del bar
-      }
-    });
-    if (cfg.barName)    APP_CONFIG.barName    = cfg.barName;
-    if (cfg.barTagline) APP_CONFIG.barTagline = cfg.barTagline;
-    if (cfg.barCity)    APP_CONFIG.barCity    = cfg.barCity;
-    if (cfg.barAddress) APP_CONFIG.barAddress = cfg.barAddress;
-    if (cfg.barPhone)   APP_CONFIG.barPhone   = cfg.barPhone;
-    if (cfg.whatsapp)  APP_CONFIG.whatsapp   = cfg.whatsapp;
-    if (cfg.instagram) APP_CONFIG.instagram = cfg.instagram;
-    if (cfg.restaurantId) APP_CONFIG.restaurantId = cfg.restaurantId;
+    
+    // Actualizar credentials si el restaurante tiene su propia BD
+    if (cfg.supabase_url)  APP_CONFIG.supabaseUrl  = cfg.supabase_url;
+    if (cfg.supabase_key)  APP_CONFIG.supabaseKey  = cfg.supabase_key;
+    if (cfg.restaurant_id) APP_CONFIG.restaurantId = cfg.restaurant_id;
+    
+    // Info pública del bar
+    if (cfg.bar_name)     APP_CONFIG.barName     = cfg.bar_name;
+    if (cfg.bar_tagline)  APP_CONFIG.barTagline  = cfg.bar_tagline;
+    if (cfg.bar_city)     APP_CONFIG.barCity      = cfg.bar_city;
+    if (cfg.bar_address)  APP_CONFIG.barAddress   = cfg.bar_address;
+    if (cfg.bar_phone)    APP_CONFIG.barPhone     = cfg.bar_phone;
+    if (cfg.whatsapp)     APP_CONFIG.whatsapp     = cfg.whatsapp;
+    if (cfg.instagram)    APP_CONFIG.instagram    = cfg.instagram;
+    if (cfg.biz_name)     APP_CONFIG.barName      = cfg.biz_name;
+    
+    // Aplicar schedule y zonas si existen
+    if (cfg.weekly_schedule) {
+      try {
+        const sched = typeof cfg.weekly_schedule === 'string' ? JSON.parse(cfg.weekly_schedule) : cfg.weekly_schedule;
+        APP_CONFIG.weeklySchedule = sched;
+      } catch(e) {}
+    }
+    if (cfg.zones_config) {
+      try {
+        const zones = typeof cfg.zones_config === 'string' ? JSON.parse(cfg.zones_config) : cfg.zones_config;
+        APP_CONFIG.zones = zones;
+      } catch(e) {}
+    }
+    
     window.__ROUTING__.config = cfg;
+    
+    // Re-inicializar Supabase client con las credenciales correctas
+    if (typeof window.supabase !== 'undefined' && APP_CONFIG.supabaseUrl && APP_CONFIG.supabaseKey) {
+      try {
+        window.db = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+        // Actualizar el canal RLS con el restaurant_id correcto
+        if (cfg.restaurant_id && window.db.rpc) {
+          window.db.rpc('set_current_restaurant', { p_restaurant_id: cfg.restaurant_id }).then(()=>{}).catch(()=>{});
+        }
+      } catch(e) { console.warn('Supabase re-init error:', e); }
+    }
+    
+    // Actualizar标签栏
+    if (cfg.bar_name || cfg.biz_name) {
+      const name = cfg.bar_name || cfg.biz_name;
+      if (window.__UPDATE_BAR_NAME__) window.__UPDATE_BAR_NAME__(name);
+    }
   }
 
   // ── Inicialización ────────────────────────────────────
-  // Para páginas públicas: cargar config async y esperar
-  // Para admin: la config se carga antes de inicializar Supabase
   if (window.__ROUTING__.subdomain) {
     loadRestaurantConfig(window.__ROUTING__.subdomain).then(cfg => {
       if (cfg) {
         applyRestaurantConfig(cfg);
-        window.__ROUTING__.restaurantId = cfg.restaurantId;
-        // Notificar a supabase.js que actualice el restaurant context
+        window.__ROUTING__.restaurantId = cfg.restaurant_id || cfg.restaurantId;
         window.dispatchEvent(new CustomEvent('restaurant-config-loaded', { detail: cfg }));
       }
       window.__ROUTING__.loaded = true;
+      window.dispatchEvent(new CustomEvent('routing-complete'));
     });
   } else {
     window.__ROUTING__.loaded = true;
+    window.dispatchEvent(new CustomEvent('routing-complete'));
   }
 })();
