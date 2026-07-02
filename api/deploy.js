@@ -138,12 +138,18 @@ module.exports = async function handler(req, res) {
     // ── 5. Deploy to Vercel via CLI ──────────────────────
     let vercelUrl = '';
     log('5. Deploying to Vercel...');
+    log('workDir:', workDir);
+    log('VERCEL_TOKEN present:', !!VERCEL_TOKEN);
     try {
-      const vercelOut = exec(
-        `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard 2>&1`,
-        { timeout: 180000, silent: true }
-      );
-      log('Vercel output:', vercelOut.slice(-200));
+      // Check if vercel is available
+      const vercelCheck = exec(`vercel --version 2>&1`, { timeout: 10000, silent: true });
+      log('Vercel version:', vercelCheck.slice(0, 50));
+
+      const vercelCmd = `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard 2>&1`;
+      log('Running:', vercelCmd.slice(0, 80));
+      const vercelOut = exec(vercelCmd, { timeout: 180000, silent: true });
+      log('Vercel raw output length:', vercelOut.length);
+      log('Vercel output:', vercelOut.slice(-300));
 
       // Extract URL from output
       const urlMatch = vercelOut.match(/https:\/\/[^\s]+\.vercel\.app/);
@@ -151,16 +157,17 @@ module.exports = async function handler(req, res) {
         vercelUrl = urlMatch[0].replace('https://', '').replace('.vercel.app', '');
         log('Vercel deployed:', vercelUrl);
       } else {
-        log('Vercel URL not found in output, checking...');
+        log('Vercel URL not found in output');
         // Try to find project URL via API
         const projList = await httpsRequest('GET', `https://api.vercel.com/v13/projects?search=${repoName}&limit=1`,
           null, { 'Authorization': `Bearer ${VERCEL_TOKEN}` });
         if (projList.status === 200 && projList.data.projects?.length > 0) {
           vercelUrl = projList.data.projects[0].name;
+          log('Found project via API:', vercelUrl);
         }
       }
     } catch (e) {
-      log('Vercel deploy error:', e.message.slice(0, 100));
+      log('Vercel deploy error:', e.message.slice(0, 200));
     }
 
     // ── 6. Register in Supabase ───────────────────────────
