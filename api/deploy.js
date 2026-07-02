@@ -218,7 +218,7 @@ module.exports = async function handler(req, res) {
         } else {
           log('Creating new Vercel project...');
           const vCreate = await httpsRequest('POST', `https://api.vercel.com/v13/projects`,
-            { name: repoName, framework: 'nextjs', gitRepository: { repo: newRepoFullName, type: 'github' } },
+            { name: repoName, gitRepository: { repo: newRepoFullName, type: 'github' } },
             { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
           );
           if (vCreate.status === 200 || vCreate.status === 201) {
@@ -229,17 +229,30 @@ module.exports = async function handler(req, res) {
           }
         }
 
-        if (projectId || githubRepoId) {
+        if (projectId) {
           log('Triggering Vercel deployment...');
-          const deployPayload = {
-            name: repoName,
-            gitSource: { ref: 'main', type: 'github' },
-          };
-          if (githubRepoId) deployPayload.gitSource.repoId = githubRepoId;
-          else deployPayload.gitSource.repo = newRepoFullName;
+          // Use project-scoped deployment
+          const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments?projectId=${projectId}`,
+            {
+              name: repoName,
+              gitSource: { repoId: String(githubRepoId), ref: 'main', type: 'github' },
+            },
+            { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
+          );
 
+          if (vDeploy.status === 200 || vDeploy.status === 201) {
+            vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
+            log('Vercel deployed:', vercelUrl);
+          } else {
+            log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
+          }
+        } elseif (githubRepoId) {
+          // Fallback: create deployment without projectId
           const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
-            deployPayload,
+            {
+              name: repoName,
+              gitSource: { repoId: String(githubRepoId), ref: 'main', type: 'github' },
+            },
             { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
           );
 
