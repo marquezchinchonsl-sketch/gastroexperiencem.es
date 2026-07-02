@@ -224,18 +224,24 @@ module.exports = async function handler(req, res) {
           });
           log(`Upload ${f.file}: ${uploadResult.status}`);
         }
-        log('All files uploaded. Creating deployment...');
+        log('All files uploaded. Creating deployment with fileSha1Map...');
+        
         const deployPayload = {
           name: repoName,
           fileSha1Map,
+          projectSettings: {
+            outputDirectory: '.',
+          },
         };
+        
+        log('Sending deployPayload with', Object.keys(deployPayload.fileSha1Map).length, 'files');
         
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
         );
 
-        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
+        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 150));
         if (vDeploy.status === 200 || vDeploy.status === 201) {
           vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
           log('Deployed! URL:', vercelUrl);
