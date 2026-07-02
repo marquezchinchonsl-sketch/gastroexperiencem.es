@@ -225,6 +225,10 @@ module.exports = async function handler(req, res) {
           log(`Upload ${f.file}: ${uploadResult.status}`);
         }
         log('All files uploaded. Creating deployment...');
+        const deployPayload = {
+          name: repoName,
+          fileSha1Map,
+        };
         
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
