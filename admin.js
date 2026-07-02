@@ -155,6 +155,7 @@ function finishLogin(token, email) {
   if (map[activeTab]) map[activeTab]();
   checkOnboarding();
   resetSessionTimeout();
+  loadRestaurantSelector();
 }
 
 async function checkLogin() {
@@ -273,7 +274,7 @@ document.addEventListener('touchstart', resetSessionTimeout);
 // ── WebSockets ───────────────────────────────────────────
 db.channel('public:reservations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${RID}` }, () => {
-    if(document.getElementById('tab-app-dashboard').classList.contains('active-tab')) loadMetrics(); // Update badges on home
+    if(document.getElementById('tab-app-dashboard').classList.contains('active-tab')) loadMultiRestaurantPanel();
     if(document.getElementById('tab-reservations').classList.contains('active-tab')) loadDashboard();
     if(document.getElementById('tab-metrics').classList.contains('active-tab')) loadMetrics();
   }).subscribe();
@@ -282,6 +283,246 @@ db.channel('public:menu_items')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items', filter: `restaurant_id=eq.${RID}` }, () => {
     if(document.getElementById('tab-menu').classList.contains('active-tab')) loadProducts();
   }).subscribe();
+
+// ── MULTI-RESTAURANT PANEL ────────────────────────────────
+// Our master view: shows ALL restaurants we manage with real metrics
+window.allRestaurantsData = [];
+window.selectedRestaurantId = null; // null = view all
+
+async function loadRestaurantSelector() {
+  // Show the selector in topbar for quick switching
+  const container = document.getElementById('restaurant-selector');
+  const select = document.getElementById('restaurant-select');
+  const badge = document.getElementById('restaurant-stats-badge');
+  
+  const allRests = await getAllRestaurantsFromSettings();
+  window.allRestaurantsData = allRests;
+  
+  if (allRests.length <= 1) {
+    container.style.display = 'none';
+    return;
+  }
+  
+  container.style.display = 'block';
+  select.innerHTML = '<option value="">🌐 Todos los restaurantes</option>';
+  allRests.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.restaurant_id;
+    opt.textContent = `${r.name}${r.city ? ' — ' + r.city : ''}`;
+    select.appendChild(opt);
+  });
+  
+  if (window.selectedRestaurantId) {
+    select.value = window.selectedRestaurantId;
+  }
+  
+  badge.textContent = allRests.length;
+  
+  select.onchange = async () => {
+    const rid = select.value || null;
+    window.selectedRestaurantId = rid;
+    if (rid) {
+      // Switch to single restaurant mode
+      const r = allRests.find(x => x.restaurant_id === rid);
+      if (r) {
+        // Update APP_CONFIG for this restaurant
+        if (r.supabase_url) APP_CONFIG.supabaseUrl = r.supabase_url;
+        if (r.supabase_key) APP_CONFIG.supabaseKey = r.supabase_key;
+        APP_CONFIG.restaurantId = rid;
+        if (r.bar_name || r.biz_name) APP_CONFIG.barName = r.bar_name || r.biz_name;
+        if (r.bar_city) APP_CONFIG.barCity = r.bar_city;
+        // Re-init Supabase client
+        try {
+          window.db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+          if (window.db.rpc) window.db.rpc('set_current_restaurant', { p_restaurant_id: rid }).then(()=>{}).catch(()=>{});
+        } catch(e) { console.warn('Supabase re-init:', e); }
+        document.getElementById('admin-bar-label').textContent = r.bar_name || r.biz_name || rid;
+        document.title = `Admin | ${r.bar_name || r.biz_name || rid}`;
+        // Reload current tab
+        const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab;
+        if (activeTab) openTab(activeTab);
+        toast(`Cambiado a: ${r.bar_name || r.biz_name || rid}`, 'info');
+      }
+    } else {
+      // Reset to default config (demo)
+      window.location.reload();
+    }
+  };
+}
+
+async function getAllRestaurantsFromSettings() {
+  try {
+    const res = await fetch(
+      `${APP_CONFIG.supabaseUrl}/rest/v1/settings?select=restaurant_id,key,value`,
+      { headers: { 'apikey': APP_CONFIG.supabaseKey, 'Content-Type': 'application/json' } }
+    );
+    if (!res.ok) return [];
+    const allSettings = await res.json();
+    const rids = [...new Set(allSettings.map(r => r.restaurant_id))];
+    const restaurants = [];
+    for (const rid of rids) {
+      const rows = allSettings.filter(s => s.restaurant_id === rid);
+      const cfg = {};
+      for (const row of rows) {
+        try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; }
+      }
+      let subdomain = cfg.subdomain || '';
+      if (!subdomain && cfg.bar_name) {
+        subdomain = cfg.bar_name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      }
+      restaurants.push({
+        restaurant_id: rid,
+        name: cfg.bar_name || cfg.biz_name || rid,
+        city: cfg.bar_city || '',
+        subdomain,
+        supabase_url: cfg.supabase_url || APP_CONFIG.supabaseUrl,
+        supabase_key: cfg.supabase_key || APP_CONFIG.supabaseKey,
+        status: cfg.status || 'active',
+        _cfg: cfg,
+      });
+    }
+    return restaurants;
+  } catch(e) { console.error('Error loading restaurants:', e); return []; }
+}
+
+async function getRestaurantMetricsFromSettings(rid, supabaseUrl, supabaseKey, days = 7) {
+  const d = new Date(); d.setDate(d.getDate() - days);
+  const dateStr = d.toISOString().split('T')[0];
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateStr}&select=id,date,people,status`,
+      { headers: { 'apikey': supabaseKey, 'Content-Type': 'application/json' } }
+    );
+    if (!res.ok) return { reservations: 0, covers: 0, confirmed: 0, pending: 0 };
+    const data = await res.json();
+    const valid = data.filter(r => r.status !== 'cancelled');
+    return {
+      reservations: valid.length,
+      covers: valid.reduce((s, r) => s + parseInt(r.people || 0), 0),
+      confirmed: valid.filter(r => r.status === 'confirmed').length,
+      pending: valid.filter(r => r.status === 'pending').length,
+    };
+  } catch(e) { return { reservations: 0, covers: 0, confirmed: 0, pending: 0 }; }
+}
+
+async function loadMultiRestaurantPanel() {
+  // Find the app-dashboard tab content and add our multi-restaurant view
+  const tabContent = document.getElementById('tab-app-dashboard');
+  
+  // Check if we already have the multi-restaurant section
+  let multiSection = document.getElementById('multi-restaurant-section');
+  if (!multiSection) {
+    multiSection = document.createElement('div');
+    multiSection.id = 'multi-restaurant-section';
+    multiSection.style.cssText = 'margin-bottom:28px;';
+    // Insert after the app-dashboard-grid
+    const grid = tabContent.querySelector('.app-dashboard-grid');
+    if (grid && grid.nextSibling) {
+      tabContent.insertBefore(multiSection, grid.nextSibling);
+    } else if (grid) {
+      tabContent.appendChild(multiSection);
+    }
+  }
+  
+  multiSection.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <h2 style="font-family:var(--font-display);font-size:1.6rem;font-weight:600;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-globe" style="color:var(--gold);"></i> Nuestros Restaurantes
+        </h2>
+        <p style="color:var(--text-dim);font-size:0.9rem;margin-top:4px;">Gestiona todos tus restaurantes — datos reales de Supabase</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <select id="multi-rest-filter" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:0.85rem;background:var(--surface);">
+          <option value="7">Últimos 7 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
+        <button onclick="loadMultiRestaurantPanel()" class="btn-primary" style="padding:10px 16px;"><i class="fas fa-sync-alt"></i> Actualizar</button>
+      </div>
+    </div>
+    <div id="multi-restaurants-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+      <div style="text-align:center;padding:40px;color:var(--text-dim);"><i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i><p style="margin-top:8px;">Cargando restaurantes...</p></div>
+    </div>
+  `;
+  
+  const days = parseInt(document.getElementById('multi-rest-filter')?.value || '7');
+  const allRests = await getAllRestaurantsFromSettings();
+  window.allRestaurantsData = allRests;
+  
+  if (allRests.length === 0) {
+    document.getElementById('multi-restaurants-grid').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim);background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);">
+        <i class="fas fa-store" style="font-size:2rem;opacity:0.3;margin-bottom:8px;display:block;"></i>
+        <p>No hay restaurantes registrados.</p>
+        <p style="font-size:0.85rem;margin-top:4px;">Usa Master Admin para crear nuevos clientes.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Load metrics for all restaurants in parallel
+  const restsWithMetrics = await Promise.all(
+    allRests.map(async r => {
+      const m = await getRestaurantMetricsFromSettings(r.restaurant_id, r.supabase_url, r.supabase_key, days);
+      return { ...r, metrics: m, days };
+    })
+  );
+  
+  const totalRes = restsWithMetrics.reduce((s, r) => s + r.metrics.reservations, 0);
+  const totalCovers = restsWithMetrics.reduce((s, r) => s + r.metrics.covers, 0);
+  
+  document.getElementById('multi-restaurants-grid').innerHTML = restsWithMetrics.map(r => {
+    const confRate = r.metrics.reservations > 0 
+      ? Math.round((r.metrics.confirmed / r.metrics.reservations) * 100) : 0;
+    const link = r.subdomain ? `https://${r.subdomain}.gastroexperiencem.es` : `https://gastroexperiencem.es`;
+    const adminLink = r.subdomain ? `https://${r.subdomain}.gastroexperiencem.es/admin` : `https://gastroexperiencem.es/admin`;
+    return `
+      <div class="restaurant-card" style="background:var(--surface);border-radius:var(--radius);border:1.5px solid var(--border);overflow:hidden;transition:all 0.2s;box-shadow:var(--shadow-sm);">
+        <div style="background:linear-gradient(135deg,var(--primary),#a01830);padding:16px 20px;color:#fff;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:2px;">${esc(r.name)}</h3>
+              <p style="font-size:0.8rem;opacity:0.85;">${esc(r.city || 'Sin ciudad')} · ${esc(r.restaurant_id.substring(0,12))}...</p>
+            </div>
+            <span style="background:rgba(255,255,255,0.2);padding:3px 8px;border-radius:20px;font-size:0.7rem;font-weight:700;">${r.status === 'active' ? '✅ Activo' : '⚠️ ' + r.status}</span>
+          </div>
+          ${r.subdomain ? `<p style="font-size:0.75rem;opacity:0.8;margin-top:4px;font-family:monospace;">🌐 ${esc(r.subdomain)}.gastroexperiencem.es</p>` : ''}
+        </div>
+        <div style="padding:16px 20px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;">
+              <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--primary);">${r.metrics.reservations}</div>
+              <div style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Reservas</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;">
+              <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--primary);">${r.metrics.covers}</div>
+              <div style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Cubiertos</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;">
+              <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--success);">${confRate}%</div>
+              <div style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Confirmadas</div>
+            </div>
+            <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;">
+              <div style="font-family:var(--font-display);font-size:1.6rem;font-weight:700;color:var(--warning);">${r.metrics.pending}</div>
+              <div style="font-size:0.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">Pendientes</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <a href="${esc(adminLink)}" target="_blank" class="action-btn" style="flex:1;justify-content:center;text-align:center;">
+              <i class="fas fa-cog"></i> Admin
+            </a>
+            <a href="${esc(link)}" target="_blank" class="action-btn" style="flex:1;justify-content:center;text-align:center;">
+              <i class="fas fa-globe"></i> Web
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Update summary stats
+  document.getElementById('multi-rest-filter').onchange = loadMultiRestaurantPanel;
+}
 
 // ── Nav tabs ──────────────────────────────────────────────
 window.openTab = (tabId) => {
@@ -298,7 +539,8 @@ window.openTab = (tabId) => {
     reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, 
     categories: loadCategories, config: loadConfigTab, qr: loadQR, 
     metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, 
-    integrations: loadIntegrations 
+    integrations: loadIntegrations, 
+    'app-dashboard': loadMultiRestaurantPanel,
   };
   if (map[tab.dataset.tab]) map[tab.dataset.tab]();
   
