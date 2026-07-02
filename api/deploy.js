@@ -157,8 +157,9 @@ module.exports = async function handler(req, res) {
         }
 
         fileDataList.push({ file: filePath, data: Buffer.from(content).toString('base64'), encoding: 'base64' });
+        if (fileDataList.length <= 5 || filePath.endsWith('.html') || filePath === 'config.js') { log(`Added ${filePath} (total: ${fileDataList.length})`); }
       } catch(e) {
-        log(`Skip ${filePath}: ${e.message.slice(0, 50)}`);
+        log(`Download ${filePath} FAILED: ${e.message.slice(0, 80)}`);
       }
     }
     log(`Downloaded ${fileDataList.length} files`);
