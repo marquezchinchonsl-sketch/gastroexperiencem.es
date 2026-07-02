@@ -191,20 +191,18 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        log('Uploading files to Vercel storage...');
-        log('Files to upload:', fileDataList.length);
-        const crypto = require('crypto');
-        const fileSha1Map = {};
+        // Upload files to Vercel storage using their large file protocol
+        log('Uploading files via Vercel storage API...');
         
         for (const f of fileDataList) {
           const content = Buffer.from(f.data, 'base64');
           const sha1 = crypto.createHash('sha1').update(content).digest('hex');
-          fileSha1Map[f.file] = sha1;
           
           const uploadResult = await new Promise((resolve, reject) => {
-            const u = new URL('https://api.vercel.com/v1/files');
             const opts = {
-              hostname: u.hostname, path: u.pathname, method: 'POST',
+              hostname: 'api.vercel.com',
+              path: '/v1/files',
+              method: 'POST',
               headers: {
                 'Authorization': `Bearer ${VERCEL_TOKEN}`,
                 'Content-Type': 'application/octet-stream',
@@ -225,22 +223,20 @@ module.exports = async function handler(req, res) {
             req.end();
           });
           
-          if (uploadResult.status !== 200 && uploadResult.status !== 201) {
+          if (uploadResult.status !== 200) {
             log(`Upload ${f.file}: ${uploadResult.status}`);
           }
         }
+        log('All files uploaded to Vercel storage');
         
-        log('All files uploaded. Creating deployment...');
-        const deployPayload = {
-          name: repoName,
-          fileSha1Map,
-          projectSettings: {
-            buildCommand: null,
-            outputDirectory: '.',
-            installCommand: null,
-            framework: null,
-          },
-        };
+        const fileSha1Map = {};
+        for (const f of fileDataList) {
+          const content = Buffer.from(f.data, 'base64');
+          fileSha1Map['/' + f.file] = crypto.createHash('sha1').update(content).digest('hex');
+        }
+        
+        log('Creating deployment with SHA1 map...');
+
 
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
