@@ -6,6 +6,7 @@ const https = require('https');
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { createHash } = require('node:crypto');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
