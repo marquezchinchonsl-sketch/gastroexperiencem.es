@@ -88,8 +88,6 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const workDir = `/tmp/gastro-vercel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
   try {
     // ── 1. Create GitHub repo ─────────────────────────────
     log('1. Creating GitHub repo...');
@@ -106,39 +104,64 @@ module.exports = async function handler(req, res) {
       throw new Error(`GitHub repo create: ${createResult.status} ${JSON.stringify(createResult.data).slice(0, 100)}`);
     }
 
-    // ── 2. Clone template repo ────────────────────────────
-    log('2. Cloning template repo...');
-    const cloneResult = exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}" 2>&1`, { timeout: 60000 });
-    log('Clone result:', (cloneResult || 'ok').slice(0, 150));
-    const workDirExists = fs.existsSync(workDir);
-    log('workDir exists after clone:', workDirExists, '| content:', workDirExists ? fs.readdirSync(workDir).slice(0, 5) : 'N/A');
+    // ── 2. Get template file tree via GitHub API ─────────
+    log('2. Getting template file list...');
+    const treeResult = await gh('GET', `/repos/${TEMPLATE_REPO}/git/trees/main?recursive=1`);
+    if (treeResult.status !== 200) { throw new Error(`Template tree failed: ${treeResult.status}`); }
+    const tree = treeResult.data.tree || [];
+    const files = tree.filter(t => t.type === 'blob' && !t.path.includes('.git/'));
+    log(`Template has ${files.length} files`);
 
-    // ── 3. Update config.js ────────────────────────────────
-    const configPath = path.join(workDir, 'config.js');
-    if (fs.existsSync(configPath)) {
-      let content = fs.readFileSync(configPath, 'utf8');
-      const replacements = {
-        barName: name,
-        barCity: city,
-        barTagline: 'Cocina de Mercado',
-        siteUrl: `https://${domain}`,
-        restaurantId: restaurant_id,
-      };
-      for (const [key, value] of Object.entries(replacements)) {
-        const escaped = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : JSON.stringify(value);
-        content = content.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
+    // ── 3. Download files and update config.js ────────────
+    log('3. Downloading and processing files...');
+    const fileDataList = [];
+    const https = require('https');
+
+    const downloadFile = (url) => {
+      return new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const opts = { hostname: u.hostname, path: u.pathname, method: 'GET', headers: { 'Authorization': `Bearer ${GH_TOKEN}`, 'Accept': 'application/vnd.github+json' } };
+        const req = https.request(opts, res => {
+          const chunks = [];
+          res.on('data', c => chunks.push(c));
+          res.on('end', () => resolve(Buffer.concat(chunks)));
+        });
+        req.on('error', reject);
+        req.end();
+      });
+    };
+
+    let configContent = null;
+    for (const file of files) {
+      const filePath = decodeURIComponent(file.path);
+      const rawUrl = `https://raw.githubusercontent.com/${TEMPLATE_REPO}/main/${filePath}`;
+      try {
+        let content = await downloadFile(rawUrl);
+        content = content.toString('utf8');
+
+        // Modify config.js
+        if (filePath === 'config.js') {
+          const replacements = {
+            barName: name,
+            barCity: city,
+            barTagline: 'Cocina de Mercado',
+            siteUrl: `https://${domain}`,
+            restaurantId: restaurant_id,
+          };
+          for (const [key, value] of Object.entries(replacements)) {
+            const escaped = typeof value === 'string' ? `"${value.replace(/"/g, '\\"')}"` : JSON.stringify(value);
+            content = content.replace(new RegExp(`(${key})\\s*:\\s*[^,\\n}]+`, 'g'), `$1: ${escaped}`);
+          }
+          configContent = content;
+        }
+
+        fileDataList.push({ file: filePath, data: Buffer.from(content).toString('base64'), encoding: 'base64' });
+      } catch(e) {
+        log(`Skip ${filePath}: ${e.message.slice(0, 50)}`);
       }
-      fs.writeFileSync(configPath, content);
-      log('config.js updated');
     }
-
-    // ── 4. Push to new GitHub repo ────────────────────────
-    log('4. Setting up git and pushing...');
-    const commitResult = exec(`cd "${workDir}" && git config user.email "deploy@masreservas.es" && git config user.name "MasReservas" && rm -rf .git && git init && git add -A && git commit -m "Setup: ${name} [${restaurant_id}]" 2>&1`, { timeout: 30000 });
-    if (commitResult && (commitResult.includes('fatal') || commitResult.includes('error'))) { log('Commit warning:', commitResult.slice(0, 100)); }
-    const pushResult = exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force 2>&1`, { timeout: 60000 });
-    if (pushResult && (pushResult.includes('fatal') || pushResult.includes('error'))) { log('Push failed:', pushResult.slice(0, 200)); }
-    else { log('Git push done:', pushResult.slice(0, 100)); }
+    log(`Downloaded ${fileDataList.length} files`);
+    if (configContent) { log('config.js updated in memory'); }
 
     // ── 5. Deploy directly using Vercel file upload API ──
     let vercelUrl = '';
@@ -168,47 +191,11 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        // Read all files from workDir and create deployment with file upload
-        const path = require('path');
-        const fs = require('fs');
-
-        const walkDir = (dir) => {
-          const files = [];
-          if (!fs.existsSync(dir)) {
-            log('ERROR: workDir does not exist:', dir);
-            return files;
-          }
-          const items = fs.readdirSync(dir);
-          for (const item of items) {
-            if (item === '.git') continue;
-            const fullPath = path.join(dir, item);
-            const stat = fs.statSync(fullPath);
-            if (stat.isDirectory()) {
-              files.push(...walkDir(fullPath));
-            } else {
-              const relPath = path.relative(workDir, fullPath);
-              files.push({ path: relPath, file: fullPath });
-            }
-          }
-          return files;
-        };
-
-        const allFiles = walkDir(workDir);
-        log('Files to upload:', allFiles.length);
-
-        // Create a zip or upload files individually
-        // Vercel deployment with files: POST /v13/deployments with files array
-        const fileDataList = [];
-        for (const f of allFiles) {
-          const content = fs.readFileSync(f.file);
-          const base64 = content.toString('base64');
-          fileDataList.push({ file: f.path, data: base64, encoding: 'base64' });
-        }
-
         log('Uploading files to Vercel...');
+        log('Files to upload:', fileDataList.length);
+
         const deployPayload = {
           name: repoName,
-          projectId,
           files: fileDataList,
           projectSettings: {
             buildCommand: null,
