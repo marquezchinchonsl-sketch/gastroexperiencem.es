@@ -224,8 +224,7 @@ module.exports = async function handler(req, res) {
             req.end();
           });
           
-          if (uploadResult.status !== 200) {
-            log(`Upload ${f.file}: ${uploadResult.status}`);
+          log(`Upload ${f.file}: ${uploadResult.status} ${uploadResult.status === 200 ? 'OK' : JSON.stringify(uploadResult.data).slice(0,50)}`)
           }
         }
         log('All files uploaded to Vercel storage');
@@ -241,6 +240,8 @@ module.exports = async function handler(req, res) {
           name: repoName,
           fileSha1Map,
         };
+        log('Deploy payload keys:', Object.keys(deployPayload).join(', '));
+        log('fileSha1Map type:', typeof deployPayload.fileSha1Map, 'entries:', Object.keys(deployPayload.fileSha1Map).length);
 
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
