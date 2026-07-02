@@ -867,6 +867,22 @@ function showNewClientForm() {
 }
 
 // ── New Client form ──────────────────────────────────────
+async function triggerDeploy(formData) {
+  // Use Vercel serverless function
+  try {
+    const res = await fetch(/api/deploy, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: formData,
+    });
+    if (res.ok) return await res.json();
+    const errData = await res.json().catch(() => ({}));
+    return { ok: false, error: errData.error || 'Server error ' + res.status };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 async function submitNewClient() {
   const name = document.getElementById('nc-name').value.trim();
   const city = document.getElementById('nc-city').value.trim();
@@ -923,21 +939,6 @@ async function submitNewClient() {
   }
 }
 
-async function triggerDeploy(formData) {
-  // Use a custom server-side endpoint via fetch to localhost:3002
-  // The deploy-server.js script runs on port 3002
-  try {
-    const res = await fetch('http://localhost:3002/deploy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: formData,
-    });
-    if (res.ok) return await res.json();
-    return { ok: false, error: 'Server error: ' + res.status };
-  } catch(e) {
-    // Server not running — return instructions
-    return { ok: false, error: 'Servidor de deploy no disponible. Necesitas iniciar: node scripts/deploy-server.js', output: 'Para desplegar automáticamente, inicia el servidor de deploy:\n\n  node scripts/deploy-server.js\n\nO ejecuta manualmente:\n  node scripts/deploy-client.js "' + JSON.parse(formData).name + '" "' + JSON.parse(formData).city + '" "' + JSON.parse(formData).domain + '" "' + JSON.parse(formData).email + '" "' + JSON.parse(formData).restaurant_id + '"' };
-  }
 }
 
 async function testNewClientConn() {
