@@ -3,7 +3,7 @@
 //  ⚠️  ESTE ES EL ÚNICO ARCHIVO QUE CAMBIA POR CADA CLIENTE
 // ============================================================
 
-const APP_CONFIG = {
+window.APP_CONFIG = {
 
   // ── 1. IDENTIDAD DEL NEGOCIO ────────────────────────────
   barName:    "Restaurante El Mar",
@@ -46,7 +46,7 @@ const APP_CONFIG = {
 
 };
 
-if (typeof module !== 'undefined') module.exports = APP_CONFIG;
+if (typeof module !== 'undefined') module.exports = window.APP_CONFIG;
 
 // ── SAAS FEATURES: TRADUCCIÓN Y TRACKING ─────────────────
 if (typeof window !== 'undefined') {
@@ -58,7 +58,7 @@ if (typeof window !== 'undefined') {
     if (path.endsWith('.html')) path = path.replace('.html', '');
     if (path === 'index' || path === '') path = 'index'; // Normalizar inicio
     if (!window.location.pathname.includes('admin') && typeof window.supabase !== 'undefined') {
-      const db = window.supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
+      const db = window.supabase.createClient(window.APP_CONFIG.supabaseUrl, window.APP_CONFIG.supabaseKey);
       // Fix RLS: set restaurant context for this session
       db.rpc('set_current_restaurant', { p_restaurant_id: APP_CONFIG.restaurantId }).then(()=>{}).catch(()=>{});
       db.from('settings').select('value').eq('restaurant_id', APP_CONFIG.restaurantId).eq('key', 'stats_views').maybeSingle()
