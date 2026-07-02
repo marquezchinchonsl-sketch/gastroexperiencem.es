@@ -192,15 +192,48 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        log('Creating deployment with files array...');
+        // First upload all files to Vercel storage
+        log('Uploading files to Vercel storage...');
+        const fileSha1Map = {};
+        
+        for (const f of fileDataList) {
+          const content = Buffer.from(f.data, 'base64');
+          const sha1 = createHash('sha1').update(content).digest('hex');
+          fileSha1Map['/' + f.file] = sha1;
+          
+          // Upload to Vercel storage
+          const uploadResult = await new Promise((resolve, reject) => {
+            const opts = {
+              hostname: 'api.vercel.com', path: '/v1/files', method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${VERCEL_TOKEN}`,
+                'Content-Type': 'application/octet-stream',
+                'Content-Length': content.length,
+                'x-now-digest': sha1,
+                'x-now-size': String(content.length),
+              }
+            };
+            const req = https.request(opts, res => {
+              let d = ''; res.on('data', c => d += c);
+              res.on('end', () => {
+                try { resolve({ status: res.statusCode, data: JSON.parse(d) }); }
+                catch { resolve({ status: res.statusCode, data: d }); }
+              });
+            });
+            req.on('error', reject);
+            req.write(content);
+            req.end();
+          });
+          log(`Upload ${f.file}: ${uploadResult.status}`);
+        }
+        log('All files uploaded. Creating deployment with fileSha1Map...');
         
         const deployPayload = {
           name: repoName,
-          files: fileDataList,
+          fileSha1Map,
         };
         
-        log('Files array size:', fileDataList.length);
-        log('Sending deployment request...');
+        log('Sending deployment request with SHA1 map...');
         const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
