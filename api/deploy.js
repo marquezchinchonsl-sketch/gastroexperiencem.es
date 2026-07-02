@@ -192,6 +192,16 @@ module.exports = async function handler(req, res) {
       log('config.js updated:', cfgUpload.status);
     }
 
+    // ── 5. Get GitHub repo ID ─────────────────────────────
+    let githubRepoId = null;
+    try {
+      const repoInfo = await gh('GET', `/repos/${newRepoFullName}`);
+      if (repoInfo.status === 200 && repoInfo.data.id) {
+        githubRepoId = repoInfo.data.id;
+        log('GitHub repo ID:', githubRepoId);
+      }
+    } catch(e) { log('Could not get GitHub repo ID'); }
+
     // ── 5. Deploy to Vercel ───────────────────────────────
     let vercelUrl = '';
     if (VERCEL_TOKEN) {
@@ -219,14 +229,17 @@ module.exports = async function handler(req, res) {
           }
         }
 
-        if (projectId) {
+        if (projectId || githubRepoId) {
           log('Triggering Vercel deployment...');
+          const deployPayload = {
+            name: repoName,
+            gitSource: { ref: 'main', type: 'github' },
+          };
+          if (githubRepoId) deployPayload.gitSource.repoId = githubRepoId;
+          else deployPayload.gitSource.repo = newRepoFullName;
+
           const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
-            {
-              name: repoName,
-              gitSource: { repo: newRepoFullName, ref: 'main', type: 'github' },
-              projectId,
-            },
+            deployPayload,
             { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
           );
 
@@ -235,7 +248,6 @@ module.exports = async function handler(req, res) {
             log('Vercel deployed:', vercelUrl);
           } else {
             log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
-            // Try alternative: just create project, Vercel will auto-deploy from GitHub
           }
         }
       } catch (e) {
