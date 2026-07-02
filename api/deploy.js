@@ -246,7 +246,7 @@ module.exports = async function handler(req, res) {
           } else {
             log('Vercel deploy failed:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
           }
-        } elseif (githubRepoId) {
+        } else if (githubRepoId) {
           // Fallback: create deployment without projectId
           const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
             {
