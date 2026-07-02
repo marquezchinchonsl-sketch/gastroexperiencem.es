@@ -170,6 +170,10 @@ module.exports = async function handler(req, res) {
 
         const walkDir = (dir) => {
           const files = [];
+          if (!fs.existsSync(dir)) {
+            log('ERROR: workDir does not exist:', dir);
+            return files;
+          }
           const items = fs.readdirSync(dir);
           for (const item of items) {
             if (item === '.git') continue;
@@ -253,9 +257,9 @@ module.exports = async function handler(req, res) {
       log('Supabase registration:', bdRes.status);
     } catch(e) { log('Supabase error:', e.message); }
 
-    // ── 7. Cleanup ────────────────────────────────────────
+    // ── 7. Cleanup (only after all steps complete) ────
+    log('Cleanup...');
     try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
-    try { exec(`rm -rf "${workDir}"`, { ignoreError: true }); } catch {}
 
     log(`=== DONE: ${name} ===`);
     const response = {
