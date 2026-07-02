@@ -136,11 +136,11 @@ module.exports = async function handler(req, res) {
     exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force`, { timeout: 60000 });
     log('Git push done');
 
-    // ── 5. Deploy to Vercel via API ──────────────────────
+    // ── 5. Deploy directly using Vercel file upload API ──
     let vercelUrl = '';
-    log('5. Deploying to Vercel via API...');
+    log('5. Deploying to Vercel (file upload)...');
     try {
-      // First get or create the project
+      // Get or create project
       const projList = await httpsRequest('GET', `https://api.vercel.com/v13/projects?search=${repoName}&limit=1`,
         null, { 'Authorization': `Bearer ${VERCEL_TOKEN}` });
       let projectId = null;
@@ -150,7 +150,6 @@ module.exports = async function handler(req, res) {
         vercelUrl = projList.data.projects[0].name;
         log('Using existing project:', projectId);
       } else {
-        log('Creating new Vercel project...');
         const vCreate = await httpsRequest('POST', `https://api.vercel.com/v13/projects`,
           { name: repoName },
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
@@ -160,44 +159,72 @@ module.exports = async function handler(req, res) {
           vercelUrl = repoName;
           log('Project created:', projectId);
         } else {
-          log('Project create failed:', vCreate.status, JSON.stringify(vCreate.data).slice(0, 100));
+          log('Project create failed:', vCreate.status);
         }
       }
 
       if (projectId) {
-        // Get GitHub repo ID
-        const repoInfo = await gh('GET', `/repos/${newRepoFullName}`);
-        const repoId = repoInfo.status === 200 ? repoInfo.data.id : null;
-        log('GitHub repo ID:', repoId);
+        // Read all files from workDir and create deployment with file upload
+        const path = require('path');
+        const fs = require('fs');
 
-        // Trigger deployment using project-scoped endpoint
-        log('Triggering deployment for project', projectId);
+        const walkDir = (dir) => {
+          const files = [];
+          const items = fs.readdirSync(dir);
+          for (const item of items) {
+            if (item === '.git') continue;
+            const fullPath = path.join(dir, item);
+            const stat = fs.statSync(fullPath);
+            if (stat.isDirectory()) {
+              files.push(...walkDir(fullPath));
+            } else {
+              const relPath = path.relative(workDir, fullPath);
+              files.push({ path: relPath, file: fullPath });
+            }
+          }
+          return files;
+        };
+
+        const allFiles = walkDir(workDir);
+        log('Files to upload:', allFiles.length);
+
+        // Create a zip or upload files individually
+        // Vercel deployment with files: POST /v13/deployments with files array
+        const fileDataList = [];
+        for (const f of allFiles) {
+          const content = fs.readFileSync(f.file);
+          const base64 = content.toString('base64');
+          fileDataList.push({ file: f.path, data: base64, encoding: 'base64' });
+        }
+
+        log('Uploading files to Vercel...');
         const deployPayload = {
           name: repoName,
-          target: 'production',
-          gitSource: {
-            type: 'github',
-            ref: 'main',
+          projectId,
+          files: fileDataList,
+          projectSettings: {
+            buildCommand: null,
+            outputDirectory: '.',
+            installCommand: null,
+            framework: null,
           },
         };
-        if (repoId) deployPayload.gitSource.repoId = String(repoId);
 
-        const vDeploy = await httpsRequest('POST',
-          `https://api.vercel.com/v13/deployments?projectId=${projectId}`,
+        const vDeploy = await httpsRequest('POST', `https://api.vercel.com/v13/deployments`,
           deployPayload,
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
         );
 
-        log('Deploy API status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
+        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 80));
         if (vDeploy.status === 200 || vDeploy.status === 201) {
-          const deploymentUrl = vDeploy.data.url || vercelUrl;
-          log('Deployment created:', deploymentUrl);
+          vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
+          log('Deployed! URL:', vercelUrl);
         } else {
-          log('Deploy API failed - Vercel will auto-deploy from GitHub when project is linked');
+          log('Deploy failed:', JSON.stringify(vDeploy.data).slice(0, 100));
         }
       }
     } catch (e) {
-      log('Vercel API error:', e.message.slice(0, 200));
+      log('Vercel deploy error:', e.message.slice(0, 200));
     }
 
     // ── 6. Register in Supabase ───────────────────────────
