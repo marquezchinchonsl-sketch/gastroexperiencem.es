@@ -108,8 +108,9 @@ module.exports = async function handler(req, res) {
 
     // ── 2. Clone template repo ────────────────────────────
     log('2. Cloning template repo...');
-    exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}"`, { timeout: 60000 });
-    log('Clone done');
+    const cloneResult = exec(`git clone --depth=1 "https://${GH_TOKEN}@github.com/${TEMPLATE_REPO}.git" "${workDir}"`, { timeout: 60000 });
+    if (cloneResult && cloneResult.includes('fatal')) { log('Clone failed:', cloneResult.slice(0, 200)); }
+    else { log('Clone done'); }
 
     // ── 3. Update config.js ────────────────────────────────
     const configPath = path.join(workDir, 'config.js');
@@ -132,9 +133,11 @@ module.exports = async function handler(req, res) {
 
     // ── 4. Push to new GitHub repo ────────────────────────
     log('4. Setting up git and pushing...');
-    exec(`cd "${workDir}" && git config user.email "deploy@masreservas.es" && git config user.name "MasReservas" && rm -rf .git && git init && git add -A && git commit -m "Setup: ${name} [${restaurant_id}]"`, { timeout: 30000 });
-    exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force`, { timeout: 60000 });
-    log('Git push done');
+    const commitResult = exec(`cd "${workDir}" && git config user.email "deploy@masreservas.es" && git config user.name "MasReservas" && rm -rf .git && git init && git add -A && git commit -m "Setup: ${name} [${restaurant_id}]" 2>&1`, { timeout: 30000 });
+    if (commitResult && (commitResult.includes('fatal') || commitResult.includes('error'))) { log('Commit warning:', commitResult.slice(0, 100)); }
+    const pushResult = exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force 2>&1`, { timeout: 60000 });
+    if (pushResult && (pushResult.includes('fatal') || pushResult.includes('error'))) { log('Push failed:', pushResult.slice(0, 200)); }
+    else { log('Git push done:', pushResult.slice(0, 100)); }
 
     // ── 5. Deploy directly using Vercel file upload API ──
     let vercelUrl = '';
