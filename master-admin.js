@@ -2,7 +2,7 @@
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────
-const MASTER_PASSWORD = 'master2026';
+const MASTER_PASSWORD = 'master2024';
 const SUPABASE_TOKEN = 'sbp_8d62d40f9302891954d7dfdcb8b72f1e4a0'; // from CREDENCIALES.txt
 const MAIN_SUPABASE_URL = 'https://xornvhqqjovcucpuqgoo.supabase.co';
 const MAIN_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzMzNTcsImV4cCI6MjA5MzQwOTM1Nzd9.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA';
@@ -91,51 +91,48 @@ function supabaseApi(method, urlPath, body = null) {
 
 // ── RESTAURANTS FROM SUPABASE ────────────────────────────
 async function getAllRestaurants() {
+  // Get ALL settings rows to extract unique restaurant_ids
+  let allSettings = [];
   try {
-    // Get all restaurants from main DB by querying settings for subdomain entries
     const res = await fetch(
-      `${MAIN_SUPABASE_URL}/rest/v1/restaurants?select=*&order=created_at.desc`,
+      `${MAIN_SUPABASE_URL}/rest/v1/settings?select=restaurant_id,key,value`,
       { headers: { 'apikey': MAIN_SUPABASE_KEY, 'Content-Type': 'application/json' } }
     );
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length > 0) return data;
-    }
-  } catch(e) { console.warn('No restaurants table, falling back to settings'); }
+    if (res.ok) allSettings = await res.json();
+  } catch(e) { console.error('Error fetching settings:', e); return []; }
 
-  // Fallback: query settings for subdomain entries
-  try {
-    const res = await fetch(
-      `${MAIN_SUPABASE_URL}/rest/v1/settings?key=eq.subdomain&select=restaurant_id,value`,
-      { headers: { 'apikey': MAIN_SUPABASE_KEY, 'Content-Type': 'application/json' } }
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    // Get all unique restaurant_ids
-    const rids = [...new Set(data.map(r => r.restaurant_id))];
-    const restaurants = [];
-    for (const rid of rids) {
-      const cfgRes = await fetch(
-        `${MAIN_SUPABASE_URL}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&select=key,value`,
-        { headers: { 'apikey': MAIN_SUPABASE_KEY, 'Content-Type': 'application/json' } }
-      );
-      if (!cfgRes.ok) continue;
-      const cfg = await cfgRes.json();
-      const cfgObj = {};
-      for (const row of cfg) { try { cfgObj[row.key] = JSON.parse(row.value); } catch { cfgObj[row.key] = row.value; } }
-      restaurants.push({
-        restaurant_id: rid,
-        name: cfgObj.bar_name || cfgObj.biz_name || rid,
-        city: cfgObj.bar_city || '',
-        subdomain: data.find(s => s.restaurant_id === rid)?.value || '',
-        supabase_url: cfgObj.supabase_url || MAIN_SUPABASE_URL,
-        supabase_key: cfgObj.supabase_key || MAIN_SUPABASE_KEY,
-        status: 'active',
-        created_at: cfgObj.created_at || new Date().toISOString(),
-      });
+  // Deduplicate restaurant IDs
+  const rids = [...new Set(allSettings.map(r => r.restaurant_id))];
+  const restaurants = [];
+
+  for (const rid of rids) {
+    const rows = allSettings.filter(s => s.restaurant_id === rid);
+    const cfg = {};
+    for (const row of rows) {
+      try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; }
     }
-    return restaurants;
-  } catch(e) { console.error('Error loading restaurants:', e); return []; }
+
+    // Infer subdomain from bar_name if not set
+    let subdomain = cfg.subdomain || '';
+    if (!subdomain && cfg.bar_name) {
+      subdomain = cfg.bar_name.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    restaurants.push({
+      restaurant_id: rid,
+      name: cfg.bar_name || cfg.biz_name || rid,
+      city: cfg.bar_city || '',
+      subdomain: subdomain,
+      supabase_url: cfg.supabase_url || MAIN_SUPABASE_URL,
+      supabase_key: cfg.supabase_key || MAIN_SUPABASE_KEY,
+      status: cfg.status || 'active',
+      created_at: cfg.created_at || new Date().toISOString(),
+      _settings: cfg,
+    });
+  }
+  return restaurants;
 }
 
 async function getRestaurantMetrics(restaurantId, supabaseUrl, supabaseKey, days = 7) {
