@@ -136,39 +136,68 @@ module.exports = async function handler(req, res) {
     exec(`cd "${workDir}" && git remote add origin "https://${GH_TOKEN}@github.com/${newRepoFullName}.git" && git branch -M main && git push -u origin main --force`, { timeout: 60000 });
     log('Git push done');
 
-    // ── 5. Deploy to Vercel via CLI ──────────────────────
+    // ── 5. Deploy to Vercel via API ──────────────────────
     let vercelUrl = '';
-    log('5. Deploying to Vercel...');
-    log('workDir:', workDir);
-    log('VERCEL_TOKEN present:', !!VERCEL_TOKEN);
+    log('5. Deploying to Vercel via API...');
     try {
-      // Check if vercel is available
-      const vercelCheck = exec(`vercel --version 2>&1`, { timeout: 10000, silent: true });
-      log('Vercel version:', vercelCheck.slice(0, 50));
+      // First get or create the project
+      const projList = await httpsRequest('GET', `https://api.vercel.com/v13/projects?search=${repoName}&limit=1`,
+        null, { 'Authorization': `Bearer ${VERCEL_TOKEN}` });
+      let projectId = null;
 
-      const vercelCmd = `vercel --prod --token "${VERCEL_TOKEN}" --cwd "${workDir}" --yes --name "${repoName}" --no-clipboard 2>&1`;
-      log('Running:', vercelCmd.slice(0, 80));
-      const vercelOut = exec(vercelCmd, { timeout: 180000, silent: true });
-      log('Vercel raw output length:', vercelOut.length);
-      log('Vercel output:', vercelOut.slice(-300));
-
-      // Extract URL from output
-      const urlMatch = vercelOut.match(/https:\/\/[^\s]+\.vercel\.app/);
-      if (urlMatch) {
-        vercelUrl = urlMatch[0].replace('https://', '').replace('.vercel.app', '');
-        log('Vercel deployed:', vercelUrl);
+      if (projList.status === 200 && projList.data.projects?.length > 0) {
+        projectId = projList.data.projects[0].id;
+        vercelUrl = projList.data.projects[0].name;
+        log('Using existing project:', projectId);
       } else {
-        log('Vercel URL not found in output');
-        // Try to find project URL via API
-        const projList = await httpsRequest('GET', `https://api.vercel.com/v13/projects?search=${repoName}&limit=1`,
-          null, { 'Authorization': `Bearer ${VERCEL_TOKEN}` });
-        if (projList.status === 200 && projList.data.projects?.length > 0) {
-          vercelUrl = projList.data.projects[0].name;
-          log('Found project via API:', vercelUrl);
+        log('Creating new Vercel project...');
+        const vCreate = await httpsRequest('POST', `https://api.vercel.com/v13/projects`,
+          { name: repoName },
+          { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
+        );
+        if (vCreate.status === 200 || vCreate.status === 201) {
+          projectId = vCreate.data.id;
+          vercelUrl = repoName;
+          log('Project created:', projectId);
+        } else {
+          log('Project create failed:', vCreate.status, JSON.stringify(vCreate.data).slice(0, 100));
+        }
+      }
+
+      if (projectId) {
+        // Get GitHub repo ID
+        const repoInfo = await gh('GET', `/repos/${newRepoFullName}`);
+        const repoId = repoInfo.status === 200 ? repoInfo.data.id : null;
+        log('GitHub repo ID:', repoId);
+
+        // Trigger deployment using project-scoped endpoint
+        log('Triggering deployment for project', projectId);
+        const deployPayload = {
+          name: repoName,
+          target: 'production',
+          gitSource: {
+            type: 'github',
+            ref: 'main',
+          },
+        };
+        if (repoId) deployPayload.gitSource.repoId = String(repoId);
+
+        const vDeploy = await httpsRequest('POST',
+          `https://api.vercel.com/v13/deployments?projectId=${projectId}`,
+          deployPayload,
+          { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
+        );
+
+        log('Deploy API status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
+        if (vDeploy.status === 200 || vDeploy.status === 201) {
+          const deploymentUrl = vDeploy.data.url || vercelUrl;
+          log('Deployment created:', deploymentUrl);
+        } else {
+          log('Deploy API failed - Vercel will auto-deploy from GitHub when project is linked');
         }
       }
     } catch (e) {
-      log('Vercel deploy error:', e.message.slice(0, 200));
+      log('Vercel API error:', e.message.slice(0, 200));
     }
 
     // ── 6. Register in Supabase ───────────────────────────
