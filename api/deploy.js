@@ -191,12 +191,49 @@ module.exports = async function handler(req, res) {
       }
 
       if (projectId) {
-        log('Uploading files to Vercel...');
+        log('Uploading files to Vercel storage...');
         log('Files to upload:', fileDataList.length);
-
+        const crypto = require('crypto');
+        const fileSha1Map = {};
+        
+        for (const f of fileDataList) {
+          const content = Buffer.from(f.data, 'base64');
+          const sha1 = crypto.createHash('sha1').update(content).digest('hex');
+          fileSha1Map[f.file] = sha1;
+          
+          const uploadResult = await new Promise((resolve, reject) => {
+            const u = new URL('https://api.vercel.com/v1/files');
+            const opts = {
+              hostname: u.hostname, path: u.pathname, method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${VERCEL_TOKEN}`,
+                'Content-Type': 'application/octet-stream',
+                'Content-Length': content.length,
+                'x-now-digest': sha1,
+                'x-now-size': content.length.toString(),
+              }
+            };
+            const req = https.request(opts, res => {
+              let d = ''; res.on('data', c => d += c);
+              res.on('end', () => {
+                try { resolve({ status: res.statusCode, data: JSON.parse(d) }); }
+                catch { resolve({ status: res.statusCode, data: d }); }
+              });
+            });
+            req.on('error', reject);
+            req.write(content);
+            req.end();
+          });
+          
+          if (uploadResult.status !== 200 && uploadResult.status !== 201) {
+            log(`Upload ${f.file}: ${uploadResult.status}`);
+          }
+        }
+        
+        log('All files uploaded. Creating deployment...');
         const deployPayload = {
           name: repoName,
-          files: fileDataList,
+          fileSha1Map,
           projectSettings: {
             buildCommand: null,
             outputDirectory: '.',
@@ -210,7 +247,7 @@ module.exports = async function handler(req, res) {
           { 'Authorization': `Bearer ${VERCEL_TOKEN}`, 'Content-Type': 'application/json' }
         );
 
-        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 80));
+        log('Deploy status:', vDeploy.status, JSON.stringify(vDeploy.data).slice(0, 100));
         if (vDeploy.status === 200 || vDeploy.status === 201) {
           vercelUrl = vDeploy.data.url || `${repoName}.vercel.app`;
           log('Deployed! URL:', vercelUrl);
