@@ -291,7 +291,7 @@ module.exports = async function handler(req, res) {
       message: vercelUrl
         ? `Cliente "${name}" creado y desplegado en Vercel!`
         : `Cliente "${name}" creado en GitHub. Despliegue en Vercel pendiente.`,
-      logs: logLines.slice(-20), // last 20 log lines for debugging
+      logs: logLines.slice(-50), // last 20 log lines for debugging
     };
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(response));
