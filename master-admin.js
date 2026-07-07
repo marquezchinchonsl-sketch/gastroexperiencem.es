@@ -295,8 +295,8 @@ async function loadRecentActivity() {
   container.innerHTML = activities.slice(0, 10).map(a => `
     <div class="activity-item">
       <div class="activity-icon reservation"><i class="fas fa-calendar-check"></i></div>
-      <div class="activity-text">${a.text}</div>
-      <div class="activity-time">${a.time}</div>
+      <div class="activity-text">${esc(a.text || '')}</div>
+      <div class="activity-time">${esc(a.time || '')}</div>
     </div>
   `).join('');
 }

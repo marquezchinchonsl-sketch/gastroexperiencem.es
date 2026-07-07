@@ -173,26 +173,40 @@ async function checkLogin() {
   if (!inputVal) { toast('Introduce la contraseña.', 'error'); return; }
   console.log('[ADMIN] input:', inputVal, 'storedEmail:', storedEmail);
 
-  // Login directo con password legacy (admin1234) - Supabase Auth no está configurado
-  const DEFAULT_PASS = 'admin1234';
-  if (inputVal === DEFAULT_PASS) {
-    console.log('[ADMIN] Password correcto, doing finishLogin');
-    const token = genToken();
-    finishLogin(token, null);
-    toast('¡Bienvenido!', 'success');
-  } else {
-    console.log('[ADMIN] Password incorrecto');
-    rate.count += 1;
-    if (rate.count >= MAX_ATTEMPTS) {
-      rate.locked = Date.now() + LOCKOUT_MS;
-      toast(`Demasiados intentos fallidos. Bloqueado por 5 minutos.`, 'error');
+  // Login: verificar contra password almacenado en settings (o legacy admin1234)
+  try {
+    const { data: passData } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
+    const storedPass = passData?.value || 'admin1234'; // fallback legacy
+
+    if (inputVal === storedPass) {
+      console.log('[ADMIN] Password correcto, doing finishLogin');
+      const token = genToken();
+      finishLogin(token, null);
+      toast('¡Bienvenido!', 'success');
     } else {
-      toast(`Contraseña incorrecta. Intento ${rate.count}/${MAX_ATTEMPTS}`, 'error');
+      console.log('[ADMIN] Password incorrecto');
+      rate.count += 1;
+      if (rate.count >= MAX_ATTEMPTS) {
+        rate.locked = Date.now() + LOCKOUT_MS;
+        toast(`Demasiados intentos fallidos. Bloqueado por 5 minutos.`, 'error');
+      } else {
+        toast(`Contraseña incorrecta. Intento ${rate.count}/${MAX_ATTEMPTS}`, 'error');
+      }
+      saveRateLimitData(rate);
+      pwInput.classList.add('shake');
+      pwInput.value = '';
+      setTimeout(() => pwInput.classList.remove('shake'), 500);
     }
-    saveRateLimitData(rate);
-    pwInput.classList.add('shake');
-    pwInput.value = '';
-    setTimeout(() => pwInput.classList.remove('shake'), 500);
+  } catch(e) {
+    // Si falla la comprobación (e.g. RLS bloquea), usar legacy
+    if (inputVal === 'admin1234') {
+      const token = genToken();
+      finishLogin(token, null);
+      toast('¡Bienvenido!', 'success');
+    } else {
+      toast('Error al verificar contraseña. Intenta de nuevo.', 'error');
+      pwInput.value = '';
+    }
   }
 }
 document.getElementById('login-btn').onclick = checkLogin;
