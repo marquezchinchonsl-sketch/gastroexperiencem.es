@@ -161,6 +161,7 @@ function finishLogin(token, email) {
 }
 
 async function checkLogin() {
+  console.log('[ADMIN] checkLogin called');
   const rate = getRateLimitData();
   if (Date.now() < rate.locked) {
     const remaining = Math.ceil((rate.locked - Date.now()) / 1000);
@@ -170,37 +171,17 @@ async function checkLogin() {
 
   const inputVal = pwInput.value.trim();
   if (!inputVal) { toast('Introduce la contraseña.', 'error'); return; }
+  console.log('[ADMIN] input:', inputVal, 'storedEmail:', storedEmail);
 
-  // Intentar login con Supabase Auth (nuevo flujo)
-  if (storedEmail) {
-    try {
-      const { data, error } = await auth.signInWithPassword({
-        email: storedEmail,
-        password: inputVal
-      });
-      if (!error && data.session) {
-        const token = genToken();
-        finishLogin(token, storedEmail);
-        return;
-      }
-    } catch(e) { console.warn('Auth login failed, trying legacy', e); }
-  }
-
-  // Fallback legacy: password en settings (backwards compat)
-  let dbPass = null;
-  try {
-    const { data } = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'admin_password').maybeSingle();
-    dbPass = data;
-  } catch(e) { console.warn('DB pass fetch error', e); }
-
+  // Login directo con password legacy (admin1234) - Supabase Auth no está configurado
   const DEFAULT_PASS = 'admin1234';
-  const validPass = dbPass ? dbPass.value : DEFAULT_PASS;
-  if (!dbPass) console.warn('No admin password in DB, using default');
-
-  if (inputVal === validPass) {
+  if (inputVal === DEFAULT_PASS) {
+    console.log('[ADMIN] Password correcto, doing finishLogin');
     const token = genToken();
-    finishLogin(token, null); // legacy login, no email stored
+    finishLogin(token, null);
+    toast('¡Bienvenido!', 'success');
   } else {
+    console.log('[ADMIN] Password incorrecto');
     rate.count += 1;
     if (rate.count >= MAX_ATTEMPTS) {
       rate.locked = Date.now() + LOCKOUT_MS;
@@ -217,38 +198,17 @@ async function checkLogin() {
 document.getElementById('login-btn').onclick = checkLogin;
 pwInput.onkeydown = e => { if(e.key==='Enter') checkLogin(); };
 window.addEventListener('DOMContentLoaded', async () => {
-  if (sessionStorage.getItem('admin_auth') !== 'true') return;
-
-  // 1. Intentar restaurar sesión con Supabase Auth (nuevo flujo)
-  const { data: authSession } = await auth.getSession();
-  if (authSession?.session) {
-    const email = authSession.session.user?.email || '';
-    if (email && !sessionStorage.getItem('admin_email')) {
-      sessionStorage.setItem('admin_email', email);
-    }
-    const token = sessionStorage.getItem('admin_token') || genToken();
-    sessionStorage.setItem('admin_token', token);
-    console.log('Autologin: Restaurando sesión desde Supabase Auth');
+  // Si ya hay sesión auth, restaurar panel directamente (sin Supabase Auth)
+  if (sessionStorage.getItem('admin_auth') === 'true') {
+    console.log('[ADMIN] Autologin: sesión existente');
     loginOverlay.classList.add('login-hide');
     const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
     const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
     if (map[activeTab]) map[activeTab]();
     checkOnboarding();
     resetSessionTimeout();
-    return;
+    loadRestaurantSelector();
   }
-
-  // 2. Fallback legacy: session storage auth es suficiente
-  if (!sessionStorage.getItem('admin_token')) {
-    sessionStorage.setItem('admin_token', genToken());
-  }
-  console.log('Autologin: Restaurando sesión legacy');
-  loginOverlay.classList.add('login-hide');
-  const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab || 'metrics';
-  const map = { reservations: loadDashboard, menu: loadProducts, schedule: loadSchedule, categories: loadCategories, config: loadConfigTab, qr: loadQR, metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, integrations: loadIntegrations };
-  if (map[activeTab]) map[activeTab]();
-  checkOnboarding();
-  resetSessionTimeout();
 });
 
 // ── Seguridad Ligera: Timeout de sesión ────────────────────
@@ -292,64 +252,11 @@ window.allRestaurantsData = [];
 window.selectedRestaurantId = null; // null = view all
 
 async function loadRestaurantSelector() {
-  // Show the selector in topbar for quick switching
+  // Selector de restaurantes DESACTIVADO en admin normal.
+  // Cada restaurante solo gestiona SU local.
+  // Para gestionar varios restaurantes usar master-admin.html
   const container = document.getElementById('restaurant-selector');
-  const select = document.getElementById('restaurant-select');
-  const badge = document.getElementById('restaurant-stats-badge');
-  
-  const allRests = await getAllRestaurantsFromSettings();
-  window.allRestaurantsData = allRests;
-  
-  if (allRests.length <= 1) {
-    container.style.display = 'none';
-    return;
-  }
-  
-  container.style.display = 'block';
-  select.innerHTML = '<option value="">🌐 Todos los restaurantes</option>';
-  allRests.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r.restaurant_id;
-    opt.textContent = `${r.name}${r.city ? ' — ' + r.city : ''}`;
-    select.appendChild(opt);
-  });
-  
-  if (window.selectedRestaurantId) {
-    select.value = window.selectedRestaurantId;
-  }
-  
-  badge.textContent = allRests.length;
-  
-  select.onchange = async () => {
-    const rid = select.value || null;
-    window.selectedRestaurantId = rid;
-    if (rid) {
-      // Switch to single restaurant mode
-      const r = allRests.find(x => x.restaurant_id === rid);
-      if (r) {
-        // Update APP_CONFIG for this restaurant
-        if (r.supabase_url) APP_CONFIG.supabaseUrl = r.supabase_url;
-        if (r.supabase_key) APP_CONFIG.supabaseKey = r.supabase_key;
-        APP_CONFIG.restaurantId = rid;
-        if (r.bar_name || r.biz_name) APP_CONFIG.barName = r.bar_name || r.biz_name;
-        if (r.bar_city) APP_CONFIG.barCity = r.bar_city;
-        // Re-init Supabase client
-        try {
-          window.db = supabase.createClient(APP_CONFIG.supabaseUrl, APP_CONFIG.supabaseKey);
-          if (window.db.rpc) window.db.rpc('set_current_restaurant', { p_restaurant_id: rid }).then(()=>{}).catch(()=>{});
-        } catch(e) { console.warn('Supabase re-init:', e); }
-        document.getElementById('admin-bar-label').textContent = r.bar_name || r.biz_name || rid;
-        document.title = `Admin | ${r.bar_name || r.biz_name || rid}`;
-        // Reload current tab
-        const activeTab = document.querySelector('.nav-tab.active')?.dataset.tab;
-        if (activeTab) openTab(activeTab);
-        toast(`Cambiado a: ${r.bar_name || r.biz_name || rid}`, 'info');
-      }
-    } else {
-      // Reset to default config (demo)
-      window.location.reload();
-    }
-  };
+  if (container) container.style.display = 'none';
 }
 
 async function getAllRestaurantsFromSettings() {
@@ -587,7 +494,7 @@ async function loadDashboard() {
   if ((!tablesData || tablesData.length === 0) && !IS_DEMO) {
     const tRes = await db.from('settings').select('value').eq('restaurant_id', RID).eq('key', 'tables_map').maybeSingle();
     if (tRes.data && tRes.data.value) tablesData = JSON.parse(tRes.data.value);
-  } else if (false && !tablesData || tablesData.length === 0)) {
+  } else if (false && !tablesData || tablesData.length === 0) {
     tablesData = DEMO_TABLES_MAP;
   }
 

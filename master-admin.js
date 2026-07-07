@@ -2,7 +2,7 @@
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────
-const MASTER_PASSWORD = 'master2024';
+const MASTER_PASSWORD = 'master2026';
 const SUPABASE_TOKEN = 'sbp_8d62d40f9302891954d7dfdcb8b72f1e4a0'; // from CREDENCIALES.txt
 const MAIN_SUPABASE_URL = 'https://xornvhqqjovcucpuqgoo.supabase.co';
 const MAIN_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzMzNTcsImV4cCI6MjA5MzQwOTM1Nzd9.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA';
@@ -90,6 +90,76 @@ function supabaseApi(method, urlPath, body = null) {
 }
 
 // ── RESTAURANTS FROM SUPABASE ────────────────────────────
+// ── HEALTH CHECK PER RESTAURANT ────────────────────────────
+async function checkRestaurantHealth(r) {
+  const checks = [];
+  const url = r.supabase_url || MAIN_SUPABASE_URL;
+  const key = r.supabase_key || MAIN_SUPABASE_KEY;
+  const rid = r.restaurant_id;
+
+  // Check 1: Supabase reachable + menu items
+  try {
+    const mRes = await fetch(
+      `${url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(rid)}&select=id&limit=1`,
+      { headers: { 'apikey': key, 'Content-Type': 'application/json' } }
+    );
+    if (!mRes.ok) {
+      checks.push({ type: 'error', icon: 'fa-database', text: 'Supabase no responde' });
+    }
+  } catch(e) {
+    checks.push({ type: 'error', icon: 'fa-wifi', text: 'Supabase inaccesible' });
+  }
+
+  // Check 2: Menu items count
+  try {
+    const mRes = await fetch(
+      `${url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(rid)}&select=id`,
+      { headers: { 'apikey': key, 'Content-Type': 'application/json' } }
+    );
+    if (mRes.ok) {
+      const data = await mRes.json();
+      if (!data || data.length === 0) {
+        checks.push({ type: 'warning', icon: 'fa-utensils', text: 'Sin platos (carta vacía)' });
+      }
+    }
+  } catch(e) {}
+
+  // Check 3: Config completa
+  const cfg = r._settings || {};
+  if (!cfg.bar_name) checks.push({ type: 'warning', icon: 'fa-signature', text: 'Sin nombre del local' });
+  if (!cfg.bar_city) checks.push({ type: 'warning', icon: 'fa-map-marker-alt', text: 'Sin ciudad configurada' });
+  if (!cfg.zones || cfg.zones.length === 0) checks.push({ type: 'warning', icon: 'fa-chair', text: 'Sin zonas (mesas) configuradas' });
+
+  // Check 4: Actividad reciente (30 días)
+  try {
+    const d = new Date(); d.setDate(d.getDate() - 30);
+    const dateStr = d.toISOString().split('T')[0];
+    const rRes = await fetch(
+      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateStr}&select=id`,
+      { headers: { 'apikey': key, 'Content-Type': 'application/json' } }
+    );
+    if (rRes.ok) {
+      const data = await rRes.json();
+      if (!data || data.length === 0) {
+        checks.push({ type: 'info', icon: 'fa-calendar', text: 'Sin reservas en 30 días' });
+      }
+    }
+  } catch(e) {}
+
+  // Check 5: Web pública accesible
+  const pubUrl = `https://${r.subdomain || rid}.gastroexperiencem.es`;
+  try {
+    const wRes = await fetch(pubUrl, { method: 'HEAD' });
+    if (!wRes.ok) {
+      checks.push({ type: 'error', icon: 'fa-globe', text: 'Web pública no carga' });
+    }
+  } catch(e) {
+    checks.push({ type: 'error', icon: 'fa-globe', text: 'Web pública inaccesible' });
+  }
+
+  return checks;
+}
+
 async function getAllRestaurants() {
   // Get ALL settings rows to extract unique restaurant_ids
   let allSettings = [];
@@ -172,7 +242,17 @@ async function loadOverview() {
   }
   allRestaurants = restaurantMetrics;
 
+  // Health checks for all restaurants
+  let alertCount = 0;
+  for (const r of allRestaurants) {
+    r._health = await checkRestaurantHealth(r);
+    alertCount += r._health.filter(c => c.type === 'error').length;
+  }
+  allRestaurants.forEach(r => { r._health = r._health || []; });
+
   $('total-restaurants').textContent = allRestaurants.length;
+  const alertBadge = alertCount > 0 ? ` <span style="background:#DC2626;color:#fff;border-radius:50%;padding:2px 7px;font-size:0.75rem;font-weight:700;">${alertCount}</span>` : '';
+  $('total-restaurants').innerHTML = allRestaurants.length + alertBadge;
   $('reservations-today').textContent = totalRes;
   $('covers-today').textContent = totalPax;
   const rate = totalRes > 0 ? Math.round((confirmedTotal / totalRes) * 100) : 0;
@@ -252,9 +332,26 @@ function renderRestaurantsTable(restaurants) {
       </td>
       <td class="restaurant-city">${esc(r.city || '-')}</td>
       <td><span class="restaurant-subdomain">${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es</span></td>
+      <td>
+        ${(() => {
+          const errors = (r._health||[]).filter(c=>c.type==='error');
+          const warnings = (r._health||[]).filter(c=>c.type==='warning');
+          const infos = (r._health||[]).filter(c=>c.type==='info');
+          let badges = '';
+          if(errors.length) badges += errors.map(c=>`<div style="color:#DC2626;font-size:0.75rem;margin-top:2px;"><i class="fas ${c.icon}"></i> ${c.text}</div>`).join('');
+          if(warnings.length) badges += warnings.map(c=>`<div style="color:#D97706;font-size:0.75rem;margin-top:2px;"><i class="fas ${c.icon}"></i> ${c.text}</div>`).join('');
+          if(infos.length) badges += infos.map(c=>`<div style="color:#2563EB;font-size:0.75rem;margin-top:2px;"><i class="fas ${c.icon}"></i> ${c.text}</div>`).join('');
+          if(!errors.length && !warnings.length && !infos.length) return '<span style="color:#059669;font-size:0.75rem;"><i class="fas fa-check-circle"></i> Todo bien</span>';
+          return badges;
+        })()}
+      </td>
       <td><strong>${r.metrics?.reservations ?? '-'}</strong></td>
       <td><strong>${r.metrics?.covers ?? '-'}</strong></td>
-      <td><span class="status-badge ${r.status === 'active' ? 'active' : 'pending'}">${r.status === 'active' ? 'Activo' : 'Inactivo'}</span></td>
+      <td>
+        <span class="status-badge ${r.status === 'active' ? 'active' : 'pending'}">${r.status === 'active' ? 'Activo' : 'Inactivo'}</span>
+        ${(r._health || []).filter(c => c.type === 'error').length > 0 ? `<span style="margin-left:4px;" title="Hay problemas"><i class="fas fa-exclamation-triangle" style="color:#DC2626;"></i></span>` : ''}
+        ${(r._health || []).filter(c => c.type === 'warning').length > 0 ? `<span style="margin-left:4px;" title="Atención"><i class="fas fa-exclamation-circle" style="color:#D97706;"></i></span>` : ''}
+      </td>
       <td>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <a href="https://${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es/admin" target="_blank" class="action-btn" title="Admin">
