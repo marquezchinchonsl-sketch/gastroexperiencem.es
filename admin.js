@@ -236,7 +236,7 @@ document.addEventListener('touchstart', resetSessionTimeout);
 // ── WebSockets ───────────────────────────────────────────
 db.channel('public:reservations')
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations', filter: `restaurant_id=eq.${RID}` }, () => {
-    if(document.getElementById('tab-app-dashboard').classList.contains('active-tab')) loadMultiRestaurantPanel();
+    if(document.getElementById('tab-app-dashboard').classList.contains('active-tab')) loadAppDashboard();
     if(document.getElementById('tab-reservations').classList.contains('active-tab')) loadDashboard();
     if(document.getElementById('tab-metrics').classList.contains('active-tab')) loadMetrics();
   }).subscribe();
@@ -246,10 +246,13 @@ db.channel('public:menu_items')
     if(document.getElementById('tab-menu').classList.contains('active-tab')) loadProducts();
   }).subscribe();
 
-// ── MULTI-RESTAURANT PANEL ────────────────────────────────
-// Our master view: shows ALL restaurants we manage with real metrics
-window.allRestaurantsData = [];
-window.selectedRestaurantId = null; // null = view all
+// ── APP DASHBOARD (Single Restaurant Launchpad) ──────────────────────────
+async function loadAppDashboard() {
+  // El dashboard de la app ya está en el HTML (app-icon-grid)
+  // Solo carga datos básicos del restaurante actual para el widget de onboarding
+  // No carga ni muestra datos de otros restaurantes
+  console.log('[admin] loadAppDashboard — restaurante:', RID);
+}
 
 async function loadRestaurantSelector() {
   // Selector de restaurantes DESACTIVADO en admin normal.
@@ -449,7 +452,7 @@ window.openTab = (tabId) => {
     categories: loadCategories, config: loadConfigTab, qr: loadQR, 
     metrics: loadMetrics, tables: loadTablesMap, business: loadBusinessTab, 
     integrations: loadIntegrations, 
-    'app-dashboard': loadMultiRestaurantPanel,
+    'app-dashboard': loadAppDashboard,
   };
   if (map[tab.dataset.tab]) map[tab.dataset.tab]();
   
