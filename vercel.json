@@ -34,7 +34,8 @@
   ],
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/dashboard", "destination": "/master-admin.html" },
+    { "source": "/master-admin", "destination": "/master-admin.html" },
     { "source": "/setup", "destination": "/setup.html" },
     { "source": "/reservas", "destination": "/reservas.html" }
   ],

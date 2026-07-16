@@ -13,7 +13,9 @@
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN OVERLAY
+═══════════════════════════════════════════════════════════ -->
 <div id="login-overlay">
   <div class="login-card">
     <div class="login-logo">
@@ -22,7 +24,7 @@
       <p>Acceso restringido — GastroExperience SaaS</p>
     </div>
     <div class="login-fields">
-      <input type="password" id="master-password" placeholder="Contraseña Maestra">
+      <input type="password" id="master-password" placeholder="Contraseña Maestra" autocomplete="current-password">
       <button id="login-btn"><i class="fas fa-fingerprint"></i> Acceder</button>
     </div>
     <p id="login-error" class="login-error"></p>
@@ -32,7 +34,9 @@
   </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP LAYOUT
+═══════════════════════════════════════════════════════════ -->
 <div class="app-layout" id="app" style="display:none;">
 
   <!-- SIDEBAR -->
@@ -51,6 +55,7 @@
       <button class="nav-tab active" data-tab="overview"><i class="fas fa-globe"></i> Vista General</button>
       <button class="nav-tab" data-tab="restaurants"><i class="fas fa-store"></i> Restaurantes</button>
       <button class="nav-tab" data-tab="create"><i class="fas fa-plus-circle"></i> Nuevo Cliente</button>
+      <button class="nav-tab" data-tab="database"><i class="fas fa-database"></i> Base de Datos</button>
       <button class="nav-tab" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
       <button class="nav-tab" data-tab="system"><i class="fas fa-server"></i> Sistema</button>
     </nav>
@@ -60,7 +65,7 @@
         <span class="status-dot online"></span>
         <span id="system-status-text">Sistema operativo</span>
       </div>
-      <a href="admin.html" class="back-link"><i class="fas fa-user-shield"></i> Admin Restaurante</a>
+      <a href="admin.html" class="back-link" target="_blank"><i class="fas fa-user-shield"></i> Admin Restaurante</a>
     </div>
   </aside>
 
@@ -76,7 +81,9 @@
 
     <main class="dashboard-container">
 
-      <!-- ═══ OVERVIEW TAB ═══ -->
+      <!-- ═══════════════════════════════════════════════════
+           TAB: OVERVIEW
+      ════════════════════════════════════════════════════ -->
       <div id="tab-overview" class="tab-content active-tab">
         <div class="overview-header">
           <div>
@@ -106,19 +113,21 @@
         </div>
 
         <div class="section-card">
-          <h3><i class="fas fa-list"></i> Actividad Reciente (últimas 24h)</h3>
+          <h3><i class="fas fa-list"></i> Actividad Reciente (hoy)</h3>
           <div id="recent-activity" class="activity-list">
             <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando actividad...</div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ RESTAURANTS TAB ═══ -->
+      <!-- ═══════════════════════════════════════════════════
+           TAB: RESTAURANTS
+      ════════════════════════════════════════════════════ -->
       <div id="tab-restaurants" class="tab-content">
         <div class="overview-header">
           <div>
             <h2><i class="fas fa-store"></i> Restaurantes</h2>
-            <p>Gestiona todos los restaurantes del SaaS</p>
+            <p>Gestiona todos los restaurantes del SaaS — clic en una fila para ver detalle</p>
           </div>
           <div class="search-box">
             <i class="fas fa-search"></i>
@@ -130,23 +139,26 @@
           <table class="restaurants-table">
             <thead>
               <tr>
-                <th>Restaurante</th>
+                <th>Nombre</th>
                 <th>Ciudad</th>
                 <th>Subdominio</th>
-                <th>Reservas (7d)</th>
-                <th>Cubiertos (7d)</th>
+                <th>Salud</th>
+                <th>Reservas 7d</th>
+                <th>Cubiertos 7d</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="restaurants-body">
-              <tr><td colspan="7" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
+              <tr><td colspan="8" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- ═══ CREATE NEW CLIENT TAB ═══ -->
+      <!-- ═══════════════════════════════════════════════════
+           TAB: CREATE NEW CLIENT
+      ════════════════════════════════════════════════════ -->
       <div id="tab-create" class="tab-content">
         <div class="overview-header">
           <div>
@@ -198,9 +210,7 @@
               <h3>Confirmar Configuración</h3>
             </div>
             <div class="step-content">
-              <div class="confirm-details" id="confirm-details">
-                <!-- Filled by JS -->
-              </div>
+              <div class="confirm-details" id="confirm-details"></div>
               <div class="warning-box">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Esto creará un proyecto Supabase nuevo, configurará el subdominio y desplegará automáticamente. El proceso puede tardar 2-4 minutos.</p>
@@ -221,19 +231,19 @@
             <div class="step-content">
               <div class="creation-log" id="creation-log">
                 <div class="log-entry pending" id="log-supabase">
-                  <i class="fas fa-database"></i> Creando proyecto Supabase...
+                  <i class="fas fa-circle"></i> Creando proyecto Supabase...
                 </div>
                 <div class="log-entry pending" id="log-config">
-                  <i class="fas fa-cog"></i> Configurando base de datos...
+                  <i class="fas fa-circle"></i> Configurando base de datos...
                 </div>
-                <div class="log-entry pending" id="log-deploy">
-                  <i class="fas fa-cloud-upload-alt"></i> Desplegando en Vercel...
+                <div class="log-entry pending" id="log-register">
+                  <i class="fas fa-circle"></i> Registrando en GastroExperience...
                 </div>
                 <div class="log-entry pending" id="log-dns">
-                  <i class="fas fa-network-wired"></i> Configurando subdominio...
+                  <i class="fas fa-circle"></i> Configurando subdominio...
                 </div>
                 <div class="log-entry pending" id="log-complete">
-                  <i class="fas fa-check-circle"></i> ¡Restaurante listo!
+                  <i class="fas fa-circle"></i> ¡Restaurante listo!
                 </div>
               </div>
               <div class="progress-bar-container">
@@ -250,26 +260,75 @@
               <h3>¡Restaurante Creado!</h3>
             </div>
             <div class="step-content">
-              <div class="success-details" id="success-details">
-                <!-- Filled by JS -->
-              </div>
+              <div class="success-details" id="success-details"></div>
               <div class="button-row" style="justify-content:center;">
                 <button class="btn-primary" onclick="resetWizard()"><i class="fas fa-plus"></i> Crear Otro</button>
-                <button class="btn-success" onclick="openTab('restaurants')"><i class="fas fa-store"></i> Ver Restaurantes</button>
+                <button class="btn-success" onclick="openTab('restaurants'); loadRestaurants();"><i class="fas fa-store"></i> Ver Restaurantes</button>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ ANALYTICS TAB ═══ -->
+      <!-- ═══════════════════════════════════════════════════
+           TAB: DATABASE BROWSER
+      ════════════════════════════════════════════════════ -->
+      <div id="tab-database" class="tab-content">
+        <div class="overview-header">
+          <div>
+            <h2><i class="fas fa-database"></i> Base de Datos</h2>
+            <p>Navega y edita las tablas de la base de datos principal</p>
+          </div>
+        </div>
+
+        <div class="db-toolbar">
+          <div class="db-table-selector">
+            <label>Tabla:</label>
+            <select id="db-table-select">
+              <option value="settings">settings</option>
+              <option value="menu_items">menu_items</option>
+              <option value="reservations">reservations</option>
+              <option value="special_days">special_days</option>
+              <option value="products">products</option>
+              <option value="time_slots">time_slots</option>
+            </select>
+          </div>
+          <div class="search-box">
+            <i class="fas fa-filter"></i>
+            <input type="text" id="db-restaurant-filter" placeholder="Filtrar por restaurant_id...">
+          </div>
+          <button class="btn-primary" onclick="loadDbTable()"><i class="fas fa-sync-alt"></i> Cargar</button>
+          <button class="btn-success" onclick="openAddRowModal()"><i class="fas fa-plus"></i> Añadir Fila</button>
+        </div>
+
+        <div class="db-table-container">
+          <table class="db-table" id="db-table">
+            <thead id="db-thead">
+              <tr><th>Cargando...</th></tr>
+            </thead>
+            <tbody id="db-tbody">
+              <tr><td><i class="fas fa-spinner fa-spin"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="db-pagination" id="db-pagination">
+          <button class="btn-surface" id="db-prev" onclick="dbPagePrev()" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
+          <span id="db-page-info">Página 1</span>
+          <button class="btn-surface" id="db-next" onclick="dbPageNext()" disabled>Siguiente <i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════
+           TAB: ANALYTICS
+      ════════════════════════════════════════════════════ -->
       <div id="tab-analytics" class="tab-content">
         <div class="overview-header">
           <div>
             <h2><i class="fas fa-chart-pie"></i> Analytics Global</h2>
             <p>Datos agregados de todos los restaurantes</p>
           </div>
-          <button class="btn-primary" onclick="loadAnalytics()"><i class="fas fa-sync-alt"></i> Actualizar</button>
+          <button class="btn-primary" onclick="loadAnalytics()"><i class="fas fa-sync-alt"></i> Refrescar</button>
         </div>
 
         <div class="stats-grid">
@@ -292,22 +351,24 @@
         </div>
 
         <div class="charts-grid">
-          <div class="section-card">
+          <div class="section-card chart-card">
             <h3>Reservas por Restaurante (últimos 7 días)</h3>
-            <div style="position:relative; height:300px;"><canvas id="chart-by-restaurant"></canvas></div>
+            <div class="chart-container"><canvas id="chart-by-restaurant"></canvas></div>
           </div>
-          <div class="section-card">
-            <h3>Distribución por Ciudad</h3>
-            <div style="position:relative; height:300px;"><canvas id="chart-by-city"></canvas></div>
+          <div class="section-card chart-card">
+            <h3>Cubiertos por Restaurante (últimos 7 días)</h3>
+            <div class="chart-container"><canvas id="chart-covers-by-restaurant"></canvas></div>
           </div>
-          <div class="section-card">
+          <div class="section-card chart-card chart-card-wide">
             <h3>Tendencia de Reservas (30 días)</h3>
-            <div style="position:relative; height:300px;"><canvas id="chart-trend"></canvas></div>
+            <div class="chart-container"><canvas id="chart-trend"></canvas></div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ SYSTEM TAB ═══ -->
+      <!-- ═══════════════════════════════════════════════════
+           TAB: SYSTEM
+      ════════════════════════════════════════════════════ -->
       <div id="tab-system" class="tab-content">
         <div class="overview-header">
           <div>
@@ -316,26 +377,22 @@
           </div>
         </div>
 
-        <div class="stats-grid">
-          <div class="stat-card">
+        <div class="stats-grid" id="system-status-cards">
+          <div class="stat-card" id="status-vercel">
             <h3><i class="fas fa-cloud"></i> Vercel</h3>
-            <p class="stat-ok">✅ Activo</p>
-            <small>gastroexperience.vercel.app</small>
+            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" id="status-supabase">
             <h3><i class="fas fa-database"></i> Supabase</h3>
-            <p class="stat-ok">✅ Operativo</p>
-            <small>Gestión + BD restaurantes</small>
+            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" id="status-github">
             <h3><i class="fas fa-github"></i> GitHub</h3>
-            <p class="stat-ok">✅ Conectado</p>
-            <small>marquezchinchonsl-sketch</small>
+            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
           </div>
-          <div class="stat-card">
-            <h3><i class="fas fa-shield-alt"></i> Dominio</h3>
-            <p class="stat-ok">✅ Wildcard DNS</p>
-            <small>*.gastroexperiencem.es</small>
+          <div class="stat-card" id="status-dns">
+            <h3><i class="fas fa-shield-alt"></i> DNS</h3>
+            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
           </div>
         </div>
 
@@ -343,7 +400,7 @@
           <h3><i class="fas fa-info-circle"></i> Información del Sistema</h3>
           <div class="info-grid">
             <div class="info-item">
-              <span class="info-label">Proyecto Principal</span>
+              <span class="info-label">Proyecto</span>
               <span class="info-value">gastroexperience</span>
             </div>
             <div class="info-item">
@@ -351,22 +408,37 @@
               <span class="info-value">gastroexperiencem.es</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Dominio API</span>
-              <span class="info-value">api.gastroexperiencem.es</span>
-            </div>
-            <div class="info-item">
               <span class="info-label">Repo GitHub</span>
               <span class="info-value">marquezchinchonsl-sketch/gastroexperiencem</span>
             </div>
             <div class="info-item">
-              <span class="info-label">BD Supabase Principal</span>
+              <span class="info-label">BD Supabase</span>
               <span class="info-value">xornvhqqjovcucpuqgoo</span>
             </div>
             <div class="info-item">
               <span class="info-label">URL Admin</span>
-              <span class="info-value">gastroexperiencem.es/admin</span>
+              <span class="info-value">gastroexperiencem.es/dashboard</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Dashboard</span>
+              <span class="info-value">gastroexperiencem.es/master-admin.html</span>
             </div>
           </div>
+        </div>
+
+        <div class="section-card">
+          <h3><i class="fas fa-key"></i> Cambiar Contraseña Maestra</h3>
+          <div class="form-row" style="max-width:500px;">
+            <div class="form-group">
+              <label>Nueva Contraseña</label>
+              <input type="password" id="new-master-password" placeholder="Nueva contraseña maestra">
+            </div>
+            <div class="form-group">
+              <label>Confirmar</label>
+              <input type="password" id="confirm-master-password" placeholder="Repetir contraseña">
+            </div>
+          </div>
+          <button class="btn-primary" onclick="changeMasterPassword()" style="margin-top:12px;"><i class="fas fa-save"></i> Guardar Nueva Contraseña</button>
         </div>
 
         <div class="section-card">
@@ -380,6 +452,262 @@
       </div>
 
     </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     RESTAURANT DETAIL MODAL
+═══════════════════════════════════════════════════════════ -->
+<div id="restaurant-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box modal-wide">
+    <div class="modal-header" id="modal-header">
+      <div class="modal-header-info">
+        <h2 id="modal-restaurant-name">Restaurante</h2>
+        <p id="modal-restaurant-meta">—</p>
+      </div>
+      <div class="modal-header-actions">
+        <label class="toggle-switch">
+          <input type="checkbox" id="modal-status-toggle" onchange="toggleRestaurantStatus()">
+          <span class="toggle-slider"></span>
+          <span class="toggle-label" id="modal-status-label">Activo</span>
+        </label>
+        <button class="modal-close" onclick="closeRestaurantModal()"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+
+    <!-- Health Checklist -->
+    <div class="health-checklist" id="health-checklist">
+      <div class="health-loading"><i class="fas fa-spinner fa-spin"></i> Comprobando estado del restaurante...</div>
+    </div>
+
+    <!-- Sub-Tabs -->
+    <div class="modal-subtabs">
+      <button class="sub-tab active" data-subtab="info"><i class="fas fa-info-circle"></i> Info</button>
+      <button class="sub-tab" data-subtab="carta"><i class="fas fa-utensils"></i> Carta</button>
+      <button class="sub-tab" data-subtab="reservas"><i class="fas fa-calendar-check"></i> Reservas</button>
+      <button class="sub-tab" data-subtab="zonas"><i class="fas fa-chair"></i> Zonas</button>
+      <button class="sub-tab" data-subtab="horarios"><i class="fas fa-clock"></i> Horarios</button>
+      <button class="sub-tab" data-subtab="password"><i class="fas fa-key"></i> Password</button>
+    </div>
+
+    <!-- Sub-tab content: INFO -->
+    <div class="modal-subcontent active-subtab" id="subtab-info">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre del Establecimiento</label>
+          <input type="text" id="info-bar-name" placeholder="Bar La Esquina">
+        </div>
+        <div class="form-group">
+          <label>Ciudad</label>
+          <input type="text" id="info-bar-city" placeholder="Madrid">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dirección</label>
+          <input type="text" id="info-bar-address" placeholder="Calle Gran Vía, 42">
+        </div>
+        <div class="form-group">
+          <label>Teléfono</label>
+          <input type="text" id="info-bar-phone" placeholder="91 123 45 67">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="info-email" placeholder="admin@restaurante.com">
+        </div>
+        <div class="form-group">
+          <label>Subdominio</label>
+          <input type="text" id="info-subdomain" placeholder="bar-la-esquina" style="font-family:monospace;">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveRestaurantInfo()"><i class="fas fa-save"></i> Guardar Cambios</button>
+        <button class="btn-success" onclick="openAdminInNewTab()"><i class="fas fa-external-link-alt"></i> Abrir Admin</button>
+        <button class="btn-surface" onclick="openWebInNewTab()"><i class="fas fa-globe"></i> Ver Web</button>
+      </div>
+    </div>
+
+    <!-- Sub-tab content: CARTA -->
+    <div class="modal-subcontent" id="subtab-carta">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h3 style="font-size:1rem;font-weight:600;"><i class="fas fa-utensils"></i> Platos de la Carta</h3>
+        <button class="btn-success" onclick="openAddMenuItemModal()"><i class="fas fa-plus"></i> Añadir Plato</button>
+      </div>
+      <div class="modal-table-container">
+        <table class="modal-table" id="carta-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Categoría</th>
+              <th>Precio</th>
+              <th>Visible</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="carta-tbody">
+            <tr><td colspan="5" class="loading-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sub-tab content: RESERVAS -->
+    <div class="modal-subcontent" id="subtab-reservas">
+      <div class="reservas-toolbar">
+        <div>
+          <label style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin-right:8px;">Desde:</label>
+          <input type="date" id="reservas-date-from">
+          <label style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin:0 8px;">Hasta:</label>
+          <input type="date" id="reservas-date-to">
+        </div>
+        <button class="btn-primary" onclick="loadRestaurantReservations()"><i class="fas fa-filter"></i> Filtrar</button>
+      </div>
+      <div class="modal-table-container">
+        <table class="modal-table" id="reservas-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Nombre</th>
+              <th>Teléfono</th>
+              <th>Personas</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="reservas-tbody">
+            <tr><td colspan="7" class="loading-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sub-tab content: ZONAS -->
+    <div class="modal-subcontent" id="subtab-zonas">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <h3 style="font-size:1rem;font-weight:600;"><i class="fas fa-chair"></i> Zonas del Local</h3>
+        <button class="btn-success" onclick="openAddZoneModal()"><i class="fas fa-plus"></i> Añadir Zona</button>
+      </div>
+      <div id="zonas-list" class="zonas-list">
+        <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
+      </div>
+    </div>
+
+    <!-- Sub-tab content: HORARIOS -->
+    <div class="modal-subcontent" id="subtab-horarios">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;"><i class="fas fa-clock"></i> Horario Semanal</h3>
+      <div class="schedule-grid" id="schedule-grid">
+        <!-- Generated by JS -->
+      </div>
+      <button class="btn-primary" onclick="saveRestaurantSchedule()" style="margin-top:16px;"><i class="fas fa-save"></i> Guardar Horarios</button>
+    </div>
+
+    <!-- Sub-tab content: PASSWORD -->
+    <div class="modal-subcontent" id="subtab-password">
+      <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;"><i class="fas fa-key"></i> Cambiar Contraseña de Admin</h3>
+      <div class="form-group" style="max-width:400px;margin-bottom:16px;">
+        <label>Nueva Contraseña</label>
+        <input type="password" id="new-restaurant-password" placeholder="Nueva contraseña">
+      </div>
+      <div class="form-group" style="max-width:400px;margin-bottom:16px;">
+        <label>Confirmar Contraseña</label>
+        <input type="password" id="confirm-restaurant-password" placeholder="Repetir contraseña">
+      </div>
+      <button class="btn-primary" onclick="saveRestaurantPassword()"><i class="fas fa-save"></i> Cambiar Contraseña</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD MENU ITEM MODAL -->
+<div id="add-menuitem-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-header" style="padding:20px 24px;">
+      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Plato</h2>
+      <button class="modal-close" onclick="closeAddMenuItemModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="padding:0 24px 24px;">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Nombre *</label>
+        <input type="text" id="mi-name" placeholder="Nombre del plato">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categoría</label>
+          <input type="text" id="mi-category" placeholder="Ej: Raciones">
+        </div>
+        <div class="form-group">
+          <label>Precio (€)</label>
+          <input type="number" id="mi-price" placeholder="0.00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Descripción / Info</label>
+        <input type="text" id="mi-info" placeholder="Ingredientes, alérgenos...">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-primary" onclick="addMenuItem()"><i class="fas fa-plus"></i> Añadir</button>
+        <button class="btn-surface" onclick="closeAddMenuItemModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD ZONE MODAL -->
+<div id="add-zone-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-header" style="padding:20px 24px;">
+      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Zona</h2>
+      <button class="modal-close" onclick="closeAddZoneModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="padding:0 24px 24px;">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Nombre de Zona *</label>
+        <input type="text" id="zone-title" placeholder="Ej: Interior, Terraza...">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Capacidad (cubiertos)</label>
+        <input type="number" id="zone-capacity" placeholder="20" min="1">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-primary" onclick="addZone()"><i class="fas fa-plus"></i> Añadir</button>
+        <button class="btn-surface" onclick="closeAddZoneModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DB ROW MODAL -->
+<div id="add-row-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:560px;">
+    <div class="modal-header" style="padding:20px 24px;">
+      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Fila — <span id="add-row-table-name">settings</span></h2>
+      <button class="modal-close" onclick="closeAddRowModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="padding:0 24px 24px;">
+      <div id="add-row-fields"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn-primary" onclick="submitAddRow()"><i class="fas fa-plus"></i> Añadir</button>
+        <button class="btn-surface" onclick="closeAddRowModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE MODAL -->
+<div id="confirm-delete-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box" style="max-width:400px;">
+    <div style="padding:32px;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>
+      <h3 style="margin-bottom:8px;">¿Eliminar esta fila?</h3>
+      <p id="confirm-delete-message" style="color:var(--text-dim);margin-bottom:24px;font-size:0.9rem;"></p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <button class="btn-danger" id="confirm-delete-btn" onclick="confirmDelete()"><i class="fas fa-trash"></i> Eliminar</button>
+        <button class="btn-surface" onclick="closeConfirmDeleteModal()">Cancelar</button>
+      </div>
+    </div>
   </div>
 </div>
 
