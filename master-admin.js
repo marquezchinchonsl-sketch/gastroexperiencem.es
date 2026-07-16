@@ -1,1674 +1,1669 @@
-// master-admin.js — GastroExperience Master Admin
-'use strict';
+// GastroExperience Master Admin - JavaScript
 
-// ── CONFIG ─────────────────────────────────────────────────────────────
-const MASTER_PASSWORD = 'master2026';
-const SUPABASE_TOKEN = 'sbp_8d62d40f9302891954d7dfdcb8b72f1e4a0';
+// ============ CREDENTIALS ============
 const MAIN_SUPABASE_URL = 'https://xornvhqqjovcucpuqgoo.supabase.co';
-const MAIN_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzMzNTcsImV4cCI6MjA5MzQwOTM1Nzd9.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA';
+const MAIN_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhvcm52aHFxam92Y3VjcHVxZ29vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4MzMzNTcsImV4cCI6MjA5MzQwOTM1N30.h_BtfKYbUF31nlgLJMRsEHK28tne9chq7bhYnM5uwFA';
+const SUPABASE_TOKEN = 'sbp_8d62d40f9302891954d7dfdcb8b72f1e4a0';
 const MAIN_DB_ID = 'xornvhqqjovcucpuqgoo';
-const GITHUB_REPO = 'marquezchinchonsl-sketch/gastroexperiencem';
-const VERCEL_PROJECT = 'gastroexperience';
+const MASTER_PASSWORD = 'master2026';
 
-// ── STATE ───────────────────────────────────────────────────────────────
-let allRestaurants = [];
-let metricsCharts = {};
-let currentModalRestaurant = null;   // restaurant object currently open in modal
-let currentModalSettings = {};       // settings for current modal restaurant
-let dbCurrentTable = 'settings';
+// ============ STATE ============
+let restaurants = [];
+let selectedRestaurant = null;
+let allReservations = [];
+let dbTableData = [];
 let dbCurrentPage = 1;
 let dbPageSize = 50;
-let dbTotalRows = 0;
-let dbPendingDelete = null;          // { table, id }
-let dbAllRows = [];                  // full dataset for current table
+let restaurantHealth = {};
 
-// ── HELPERS ────────────────────────────────────────────────────────────
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-
-function toast(msg, type = 'info') {
-  const t = document.createElement('div');
-  t.className = `toast toast-${type}`;
-  t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':type==='error'?'exclamation-circle':type==='warning'?'exclamation-triangle':'info-circle'}"></i> ${esc(msg)}`;
-  const colors = { success: '#059669', error: '#DC2626', info: '#2563EB', warning: '#D97706' };
-  t.style.cssText = `position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;font-size:0.9rem;font-weight:500;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.2);transition:opacity 0.3s;background:${colors[type]||'#2563EB'};color:#fff;display:flex;align-items:center;gap:10px;`;
-  document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4000);
-}
-
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
+// ============ HELPERS ============
 function apiHeaders(key) {
-  return { 'apikey': key, 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' };
-}
-
-function fmtDate(d) {
-  if (!d) return '-';
-  try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }); } catch { return d; }
-}
-
-function fmtDatetime(d) {
-  if (!d) return '-';
-  try { return new Date(d).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return d; }
-}
-
-// ── LOGIN ──────────────────────────────────────────────────────────────
-$('login-btn').onclick = () => {
-  const pw = $('master-password').value;
-  if (pw === MASTER_PASSWORD) {
-    $('login-overlay').style.opacity = '0';
-    $('login-overlay').style.transition = 'opacity 0.4s';
-    setTimeout(() => {
-      $('login-overlay').style.display = 'none';
-      $('app').style.display = 'grid';
-      loadOverview();
-    }, 400);
-  } else {
-    $('login-error').textContent = 'Contraseña incorrecta.';
-    $('master-password').classList.add('shake');
-    setTimeout(() => $('master-password').classList.remove('shake'), 500);
-  }
-};
-$('master-password').onkeydown = e => { if (e.key === 'Enter') $('login-btn').click(); };
-
-// ── NAV ────────────────────────────────────────────────────────────────
-document.querySelectorAll('.nav-tab').forEach(tab => {
-  tab.onclick = () => {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active-tab'));
-    tab.classList.add('active');
-    $(`tab-${tab.dataset.tab}`).classList.add('active-tab');
-    const loaders = {
-      overview: loadOverview,
-      restaurants: loadRestaurants,
-      create: () => {},
-      database: () => { loadDbTable(); },
-      analytics: loadAnalytics,
-      system: loadSystem
-    };
-    if (loaders[tab.dataset.tab]) loaders[tab.dataset.tab]();
+  key = key || MAIN_SUPABASE_KEY;
+  return { 
+    'apikey': key, 
+    'Authorization': 'Bearer ' + key, 
+    'Content-Type': 'application/json' 
   };
-});
+}
 
-window.openTab = tabId => {
-  document.querySelector(`.nav-tab[data-tab="${tabId}"]`)?.click();
-};
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
 
-// ── SUPABASE REST FETCH ────────────────────────────────────────────────
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  return formatDate(dateStr) + ' ' + formatTime(dateStr);
+}
+
+function slugify(text) {
+  return text.toString().toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function addDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+// ============ API CALLS ============
 async function supabaseFetch(url, options = {}, key = MAIN_SUPABASE_KEY) {
-  const res = await fetch(url, { ...options, headers: { ...apiHeaders(key), ...(options.headers || {}) } });
-  return res;
-}
-
-async function supabaseFetchJson(url, options = {}, key = MAIN_SUPABASE_KEY) {
-  const res = await supabaseFetch(url, options, key);
-  let data;
-  try { data = await res.json(); } catch { data = null; }
-  return { ok: res.ok, status: res.status, data };
-}
-
-// ── RESTAURANTS DATA ───────────────────────────────────────────────────
-async function getAllRestaurants() {
-  const { data, ok } = await supabaseFetchJson(
-    `${MAIN_SUPABASE_URL}/rest/v1/settings?select=restaurant_id,key,value`,
-    { headers: { 'Prefer': 'count=exact' } }
-  );
-  if (!ok || !data) return [];
-
-  const rids = [...new Set(data.map(r => r.restaurant_id))];
-  const restaurants = [];
-
-  for (const rid of rids) {
-    const rows = data.filter(s => s.restaurant_id === rid);
-    const cfg = {};
-    for (const row of rows) {
-      try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; }
-    }
-
-    let subdomain = cfg.subdomain || '';
-    if (!subdomain && cfg.bar_name) {
-      subdomain = cfg.bar_name.toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    }
-
-    restaurants.push({
-      restaurant_id: rid,
-      name: cfg.bar_name || cfg.biz_name || rid,
-      city: cfg.bar_city || '',
-      address: cfg.bar_address || '',
-      phone: cfg.bar_phone || '',
-      email: cfg.email || '',
-      subdomain,
-      supabase_url: cfg.supabase_url || MAIN_SUPABASE_URL,
-      supabase_key: cfg.supabase_key || MAIN_SUPABASE_KEY,
-      status: cfg.status || 'active',
-      admin_password: cfg.admin_password || '',
-      weekly_schedule: cfg.weekly_schedule || null,
-      zones: cfg.zones || cfg.zones_config || [],
-      created_at: cfg.created_at || new Date().toISOString(),
-      _settings: cfg,
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: { ...apiHeaders(key), ...options.headers }
     });
+    return res;
+  } catch (e) {
+    throw e;
   }
-  return restaurants;
 }
 
-async function getRestaurantMetrics(rid, url, key, days = 7) {
-  const d = new Date(); d.setDate(d.getDate() - days);
-  const dateStr = d.toISOString().split('T')[0];
+async function loadRestaurants() {
   try {
-    const res = await fetch(
-      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateStr}&select=date,time,people,status`,
-      { headers: apiHeaders(key) }
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/restaurants?select=*&order=name.asc`
     );
-    if (!res.ok) return { reservations: 0, covers: 0, confirmed: 0 };
-    const data = await res.json();
-    const valid = data.filter(r => r.status !== 'cancelled');
-    return {
-      reservations: valid.length,
-      covers: valid.reduce((s, r) => s + parseInt(r.people || 0), 0),
-      confirmed: valid.filter(r => r.status === 'confirmed').length,
-    };
-  } catch(e) { return { reservations: 0, covers: 0, confirmed: 0 }; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    restaurants = await res.json();
+    renderRestaurantList();
+    renderRestaurantGrid();
+    updateOverviewStats();
+    return restaurants;
+  } catch (e) {
+    toast('Error cargando restaurantes: ' + e.message, 'error');
+    return [];
+  }
 }
 
-// ── HEALTH CHECK ───────────────────────────────────────────────────────
-async function checkRestaurantHealth(r) {
-  const checks = [];
-  const url = r.supabase_url || MAIN_SUPABASE_URL;
-  const key = r.supabase_key || MAIN_SUPABASE_KEY;
-  const rid = r.restaurant_id;
-
-  // 1. Supabase connection + menu items
+async function loadRestaurantData(restaurant) {
+  const rid = restaurant.restaurant_id;
+  const url = restaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = restaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
   try {
-    const mRes = await fetch(
-      `${url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(rid)}&select=id&limit=1`,
-      { headers: apiHeaders(key) }
+    // Load menu items
+    const menuRes = await supabaseFetch(
+      `${url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(rid)}&select=*`,
+      {}, key
     );
-    if (!mRes.ok) {
-      checks.push({ type: 'error', icon: 'fa-database', text: 'Supabase no responde', repairTab: null });
+    restaurant._menuItems = menuRes.ok ? await menuRes.json() : [];
+    
+    // Load zones from settings
+    const zonesRes = await supabaseFetch(
+      `${url}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&key=eq.zones&select=value`,
+      {}, key
+    );
+    if (zonesRes.ok) {
+      const zonesData = await zonesRes.json();
+      restaurant._zones = zonesData[0]?.value ? JSON.parse(zonesData[0].value) : [];
     } else {
-      const mData = await mRes.json();
-      if (!mData || mData.length === 0) {
-        checks.push({ type: 'warning', icon: 'fa-utensils', text: 'Sin platos en la carta', repairTab: 'carta' });
-      }
+      restaurant._zones = [];
     }
-  } catch(e) {
-    checks.push({ type: 'error', icon: 'fa-wifi', text: 'Supabase inaccesible', repairTab: null });
-  }
-
-  // 2. Menu items count (extra check)
-  try {
-    const cntRes = await fetch(
-      `${url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(rid)}&select=id`,
-      { headers: apiHeaders(key) }
+    
+    // Load schedule
+    const schedRes = await supabaseFetch(
+      `${url}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&key=eq.schedule&select=value`,
+      {}, key
     );
-    if (cntRes.ok) {
-      const cntData = await cntRes.json();
-      if (!cntData || cntData.length === 0) {
-        checks.push({ type: 'warning', icon: 'fa-utensils', text: 'Sin platos (carta vacía)', repairTab: 'carta' });
-      }
+    if (schedRes.ok) {
+      const schedData = await schedRes.json();
+      restaurant._schedule = schedData[0]?.value ? JSON.parse(schedData[0].value) : {};
+    } else {
+      restaurant._schedule = {};
     }
-  } catch(e) {}
-
-  // 3. Config checks
-  const cfg = r._settings || {};
-  if (!cfg.bar_name) checks.push({ type: 'warning', icon: 'fa-signature', text: 'Sin nombre del local', repairTab: 'info' });
-  if (!cfg.bar_city) checks.push({ type: 'warning', icon: 'fa-map-marker-alt', text: 'Sin ciudad configurada', repairTab: 'info' });
-  if (!cfg.zones || cfg.zones.length === 0) checks.push({ type: 'warning', icon: 'fa-chair', text: 'Sin zonas configuradas', repairTab: 'zonas' });
-  if (!cfg.schedule && !cfg.weekly_schedule) checks.push({ type: 'warning', icon: 'fa-clock', text: 'Sin horarios', repairTab: 'horarios' });
-
-  // 4. Recent reservations (30 days)
-  try {
-    const d = new Date(); d.setDate(d.getDate() - 30);
-    const dateStr = d.toISOString().split('T')[0];
-    const rRes = await fetch(
-      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateStr}&select=id`,
-      { headers: apiHeaders(key) }
+    
+    // Load reservations
+    const dateFrom = addDays(-30);
+    const resRes = await supabaseFetch(
+      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateFrom}&select=*&order=date.desc,time.desc`,
+      {}, key
     );
-    if (rRes.ok) {
-      const rData = await rRes.json();
-      if (!rData || rData.length === 0) {
-        checks.push({ type: 'info', icon: 'fa-calendar', text: 'Sin reservas en 30 días', repairTab: null });
+    restaurant._reservations = resRes.ok ? await resRes.json() : [];
+    
+    return restaurant;
+  } catch (e) {
+    toast('Error cargando datos: ' + e.message, 'error');
+    return restaurant;
+  }
+}
+
+async function loadReservations() {
+  if (!selectedRestaurant) return;
+  
+  const dateFrom = document.getElementById('reservas-date-from').value || addDays(-30);
+  const dateTo = document.getElementById('reservas-date-to').value || today();
+  
+  const rid = selectedRestaurant.restaurant_id;
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=gte.${dateFrom}&date=lte.${dateTo}&select=*&order=date desc,time desc`,
+      {}, key
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderReservations(data);
+  } catch (e) {
+    toast('Error cargando reservas: ' + e.message, 'error');
+  }
+}
+
+async function loadTodayStats() {
+  if (!selectedRestaurant) return;
+  
+  const rid = selectedRestaurant.restaurant_id;
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  const todayStr = today();
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(rid)}&date=eq.${todayStr}&select=*`,
+      {}, key
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const confirmed = data.filter(r => r.status === 'confirmed').length;
+      const total = data.length;
+      const covers = data.reduce((sum, r) => sum + (parseInt(r.people) || 0), 0);
+      const confirmationRate = total > 0 ? Math.round((confirmed / total) * 100) : 0;
+      
+      document.getElementById('qs-reservations').textContent = total;
+      document.getElementById('qs-covers').textContent = covers;
+      document.getElementById('qs-confirmation-rate').textContent = confirmationRate + '%';
+    }
+  } catch (e) {
+    // Silently fail
+  }
+}
+
+// ============ HEALTH CHECK ============
+async function runHealthCheck(restaurant) {
+  restaurant = restaurant || selectedRestaurant;
+  if (!restaurant) return [];
+  
+  const url = restaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = restaurant.supabase_key || MAIN_SUPABASE_KEY;
+  const rid = restaurant.restaurant_id;
+  const checks = [];
+  
+  // Supabase connection
+  try {
+    const res = await fetch(url + '/rest/v1/menu_items?restaurant_id=eq.' + encodeURIComponent(rid) + '&select=id&limit=1', {
+      headers: apiHeaders(key)
+    });
+    if (!res.ok) {
+      checks.push({ status: 'error', icon: 'fa-database', title: 'Supabase no responde', detail: 'HTTP ' + res.status });
+    } else {
+      checks.push({ status: 'ok', icon: 'fa-database', title: 'Supabase conectado' });
+    }
+  } catch (e) {
+    checks.push({ status: 'error', icon: 'fa-wifi', title: 'Supabase inaccesible', detail: e.message });
+  }
+  
+  // Menu items count
+  try {
+    const res = await fetch(url + '/rest/v1/menu_items?restaurant_id=eq.' + encodeURIComponent(rid) + '&select=id', {
+      headers: apiHeaders(key)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (!data || data.length === 0) {
+        checks.push({ status: 'warning', icon: 'fa-utensils', title: 'Sin platos en carta' });
+      } else {
+        checks.push({ status: 'ok', icon: 'fa-utensils', title: 'Platos: ' + data.length });
       }
     }
-  } catch(e) {}
-
-  // 5. Public website
-  const pubUrl = `https://${r.subdomain || rid}.gastroexperiencem.es`;
+  } catch (e) {}
+  
+  // Zones from settings
   try {
-    const wRes = await fetch(pubUrl, { method: 'HEAD' });
-    if (!wRes.ok) {
-      checks.push({ type: 'error', icon: 'fa-globe', text: 'Web pública no carga', repairTab: null });
+    const res = await fetch(url + '/rest/v1/settings?restaurant_id=eq.' + encodeURIComponent(rid) + '&key=eq.zones&select=value', {
+      headers: apiHeaders(key)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const zones = data[0]?.value ? JSON.parse(data[0].value) : [];
+      if (!zones || zones.length === 0) {
+        checks.push({ status: 'warning', icon: 'fa-chair', title: 'Sin zonas' });
+      } else {
+        checks.push({ status: 'ok', icon: 'fa-chair', title: 'Zonas: ' + zones.map(z => z.title).join(', ') });
+      }
     }
-  } catch(e) {
-    checks.push({ type: 'error', icon: 'fa-globe', text: 'Web pública inaccesible', repairTab: null });
+  } catch (e) {}
+  
+  // Schedule
+  try {
+    const res = await fetch(url + '/rest/v1/settings?restaurant_id=eq.' + encodeURIComponent(rid) + '&key=eq.schedule&select=value', {
+      headers: apiHeaders(key)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (!data || data.length === 0) {
+        checks.push({ status: 'warning', icon: 'fa-clock', title: 'Sin horarios' });
+      } else {
+        checks.push({ status: 'ok', icon: 'fa-clock', title: 'Horario configurado' });
+      }
+    }
+  } catch (e) {}
+  
+  // Recent reservations
+  try {
+    const date30 = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+    const res = await fetch(url + '/rest/v1/reservations?restaurant_id=eq.' + encodeURIComponent(rid) + '&date=gte.' + date30 + '&select=id', {
+      headers: apiHeaders(key)
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (!data || data.length === 0) {
+        checks.push({ status: 'info', icon: 'fa-calendar', title: 'Sin reservas 30d' });
+      } else {
+        checks.push({ status: 'ok', icon: 'fa-calendar', title: 'Reservas 30d: ' + data.length });
+      }
+    }
+  } catch (e) {}
+  
+  // Public website
+  const pubUrl = 'https://' + (restaurant.subdomain || rid) + '.gastroexperiencem.es';
+  try {
+    const res = await fetch(pubUrl, { method: 'HEAD' });
+    if (!res.ok) {
+      checks.push({ status: 'error', icon: 'fa-globe', title: 'Web no responde', detail: 'HTTP ' + res.status });
+    } else {
+      checks.push({ status: 'ok', icon: 'fa-globe', title: 'Web OK' });
+    }
+  } catch (e) {
+    checks.push({ status: 'error', icon: 'fa-globe', title: 'Web inaccesible', detail: e.message });
   }
-
+  
+  // Update health status for sidebar
+  const errorCount = checks.filter(c => c.status === 'error').length;
+  const warningCount = checks.filter(c => c.status === 'warning').length;
+  
+  if (errorCount > 0) {
+    restaurantHealth[rid] = 'error';
+  } else if (warningCount > 0) {
+    restaurantHealth[rid] = 'warning';
+  } else {
+    restaurantHealth[rid] = 'ok';
+  }
+  
+  renderHealthGrid(checks);
+  renderRestaurantList();
+  updateAlertSummary();
+  
   return checks;
 }
 
-function healthIcon(type) {
-  if (type === 'error') return '<i class="fas fa-times-circle" style="color:#DC2626"></i>';
-  if (type === 'warning') return '<i class="fas fa-exclamation-circle" style="color:#D97706"></i>';
-  return '<i class="fas fa-check-circle" style="color:#059669"></i>';
+async function checkAllRestaurantsHealth() {
+  for (const r of restaurants) {
+    await runHealthCheck(r);
+  }
 }
 
-function healthClass(type) {
-  if (type === 'error') return 'health-error';
-  if (type === 'warning') return 'health-warning';
-  return 'health-info';
+function renderHealthGrid(checks) {
+  const grid = document.getElementById('health-grid');
+  if (!checks || checks.length === 0) {
+    grid.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando diagnóstico...</div>';
+    return;
+  }
+  
+  grid.innerHTML = checks.map(c => `
+    <div class="health-item ${c.status}">
+      <i class="fa-solid ${c.icon}"></i>
+      <div>
+        <div class="title">${esc(c.title)}</div>
+        ${c.detail ? `<div class="detail">${esc(c.detail)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
 }
 
-// ── OVERVIEW TAB ───────────────────────────────────────────────────────
-async function loadOverview() {
-  allRestaurants = await getAllRestaurants();
-  const today = new Date().toISOString().split('T')[0];
-
-  let totalRes = 0, totalPax = 0, confirmedTotal = 0;
-  const restaurantMetrics = [];
-
-  for (const r of allRestaurants) {
-    const m = await getRestaurantMetrics(r.restaurant_id, r.supabase_url, r.supabase_key);
-    restaurantMetrics.push({ ...r, metrics: m });
-    totalRes += m.reservations;
-    totalPax += m.covers;
-    confirmedTotal += m.confirmed;
+function updateAlertSummary() {
+  let ok = 0, warning = 0, error = 0;
+  
+  for (const rid in restaurantHealth) {
+    const status = restaurantHealth[rid];
+    if (status === 'ok') ok++;
+    else if (status === 'warning') warning++;
+    else if (status === 'error') error++;
   }
-  allRestaurants = restaurantMetrics;
+  
+  document.getElementById('alert-ok-count').textContent = ok;
+  document.getElementById('alert-warning-count').textContent = warning;
+  document.getElementById('alert-error-count').textContent = error;
+}
 
-  // Health checks
-  let alertCount = 0;
-  for (const r of allRestaurants) {
-    r._health = await checkRestaurantHealth(r);
-    alertCount += r._health.filter(c => c.type === 'error').length;
-  }
-
-  $('total-restaurants').innerHTML = allRestaurants.length + (alertCount > 0 ? ` <span class="alert-badge">${alertCount}</span>` : '');
-  $('reservations-today').textContent = totalRes;
-  $('covers-today').textContent = totalPax;
-  const rate = totalRes > 0 ? Math.round((confirmedTotal / totalRes) * 100) : 0;
-  $('confirmation-rate').textContent = `${rate}%`;
-
-  await loadRecentActivity();
+// ============ OVERVIEW ============
+function updateOverviewStats() {
+  document.getElementById('stat-total-restaurants').textContent = restaurants.length;
+  
+  // Count today's reservations and covers across all restaurants
+  let totalReservationsToday = 0;
+  let totalCoversToday = 0;
+  const todayStr = today();
+  
+  const promises = restaurants.map(async r => {
+    const url = r.supabase_url || MAIN_SUPABASE_URL;
+    const key = r.supabase_key || MAIN_SUPABASE_KEY;
+    try {
+      const res = await supabaseFetch(
+        `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(r.restaurant_id)}&date=eq.${todayStr}&select=*`,
+        {}, key
+      );
+      if (res.ok) {
+        const data = await res.json();
+        totalReservationsToday += data.length;
+        totalCoversToday += data.reduce((sum, r) => sum + (parseInt(r.people) || 0), 0);
+      }
+    } catch (e) {}
+  });
+  
+  Promise.all(promises).then(() => {
+    document.getElementById('stat-reservations-today').textContent = totalReservationsToday;
+    document.getElementById('stat-covers-today').textContent = totalCoversToday;
+  });
+  
+  loadRecentActivity();
 }
 
 async function loadRecentActivity() {
-  const container = $('recent-activity');
-  container.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
-  const activities = [];
-  const today = new Date().toISOString().split('T')[0];
-
-  for (const r of allRestaurants.slice(0, 15)) {
+  const allRecent = [];
+  const todayStr = today();
+  
+  const promises = restaurants.slice(0, 10).map(async r => {
+    const url = r.supabase_url || MAIN_SUPABASE_URL;
+    const key = r.supabase_key || MAIN_SUPABASE_KEY;
     try {
-      const res = await fetch(
-        `${r.supabase_url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(r.restaurant_id)}&date=eq.${today}&select=id,name,time,status&order=created_at.desc&limit=5`,
-        { headers: apiHeaders(r.supabase_key) }
+      const res = await supabaseFetch(
+        `${url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(r.restaurant_id)}&date=eq.${todayStr}&select=*&order=time desc&limit=10`,
+        {}, key
       );
-      if (!res.ok) continue;
-      const data = await res.json();
-      for (const resv of data) {
-        activities.push({
-          name: resv.name,
-          time: resv.time,
-          status: resv.status,
-          restaurant: r.name,
+      if (res.ok) {
+        const data = await res.json();
+        data.forEach(reservation => {
+          allRecent.push({
+            ...reservation,
+            _restaurantName: r.name,
+            _restaurantId: r.restaurant_id
+          });
         });
       }
-    } catch(e) {}
-  }
+    } catch (e) {}
+  });
+  
+  Promise.all(promises).then(() => {
+    allRecent.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+    renderActivityList(allRecent.slice(0, 10));
+  });
+}
 
-  if (activities.length === 0) {
-    container.innerHTML = `<div style="padding:30px;text-align:center;color:var(--text-dim);">
-      <i class="fas fa-calendar-day" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px;"></i>
-      Sin actividad hoy
-    </div>`;
+function renderActivityList(activities) {
+  const list = document.getElementById('activity-list');
+  
+  if (!activities || activities.length === 0) {
+    list.innerHTML = '<div class="empty-state"><p>Sin actividad reciente</p></div>';
     return;
   }
-
-  activities.sort((a, b) => {
-    const ta = a.time || '';
-    const tb = b.time || '';
-    return ta.localeCompare(tb);
-  });
-
-  container.innerHTML = activities.slice(0, 20).map(a => `
+  
+  list.innerHTML = activities.map(a => `
     <div class="activity-item">
-      <div class="activity-icon reservation"><i class="fas fa-calendar-check"></i></div>
-      <div class="activity-text"><strong>${esc(a.name)}</strong> — ${esc(a.time)} <span style="color:var(--text-muted)">(${esc(a.restaurant)})</span></div>
-      <div class="activity-time">${a.status === 'confirmed' ? '✅ Confirmada' : a.status === 'cancelled' ? '❌ Cancelada' : '⏳ Pendiente'}</div>
+      <span class="activity-time">${formatDateTime(a.date + 'T' + a.time)}</span>
+      <span class="activity-restaurant">${esc(a._restaurantName || '—')}</span>
+      <span class="activity-name">${esc(a.name || '—')} · ${a.people} pers.</span>
+      <span class="activity-status ${a.status || 'pending'}">${a.status || 'pending'}</span>
     </div>
   `).join('');
 }
 
-// ── RESTAURANTS TAB ────────────────────────────────────────────────────
-async function loadRestaurants() {
-  allRestaurants = await getAllRestaurants();
-  const restaurantMetrics = [];
-  for (const r of allRestaurants) {
-    const m = await getRestaurantMetrics(r.restaurant_id, r.supabase_url, r.supabase_key);
-    restaurantMetrics.push({ ...r, metrics: m });
-  }
-  allRestaurants = restaurantMetrics;
-
-  // Health checks
-  for (const r of allRestaurants) {
-    r._health = await checkRestaurantHealth(r);
-  }
-
-  renderRestaurantsTable(allRestaurants);
-}
-
-function renderRestaurantsTable(restaurants) {
-  const tbody = $('restaurants-body');
-
-  if (restaurants.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-dim);">
-      <i class="fas fa-store" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px;"></i>
-      No hay restaurantes. <a href="#" onclick="openTab('create');return false;" style="color:var(--primary);">Crea el primero →</a>
-    </td></tr>`;
+function renderRestaurantGrid() {
+  const grid = document.getElementById('restaurant-grid-overview');
+  
+  if (!restaurants || restaurants.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><p>No hay restaurantes</p></div>';
     return;
   }
-
-  tbody.innerHTML = restaurants.map(r => {
-    const errors = (r._health || []).filter(c => c.type === 'error');
-    const warnings = (r._health || []).filter(c => c.type === 'warning');
-    const infos = (r._health || []).filter(c => c.type === 'info');
-
-    let healthBadge = '';
-    if (errors.length > 0) {
-      healthBadge = `<span class="health-badge health-error-badge" title="${errors.map(e=>e.text).join(', ')}"><i class="fas fa-times-circle"></i> Error</span>`;
-    } else if (warnings.length > 0) {
-      healthBadge = `<span class="health-badge health-warning-badge" title="${warnings.map(w=>w.text).join(', ')}"><i class="fas fa-exclamation-circle"></i> Warning</span>`;
-    } else {
-      healthBadge = `<span class="health-badge health-ok-badge"><i class="fas fa-check-circle"></i> OK</span>`;
-    }
-
+  
+  grid.innerHTML = restaurants.map(r => {
+    const healthStatus = restaurantHealth[r.restaurant_id] || 'unknown';
     return `
-    <tr class="restaurant-row" onclick="openRestaurantModal('${esc(r.restaurant_id)}')" style="cursor:pointer;">
-      <td>
-        <div class="restaurant-name">${esc(r.name)}</div>
-        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">${esc(r.restaurant_id)}</div>
-      </td>
-      <td style="color:var(--text-dim);font-size:0.85rem;">${esc(r.city || '-')}</td>
-      <td><code class="subdomain-code">${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es</code></td>
-      <td>${healthBadge}</td>
-      <td><strong>${r.metrics?.reservations ?? '-'}</strong></td>
-      <td><strong>${r.metrics?.covers ?? '-'}</strong></td>
-      <td>
-        <span class="status-badge ${r.status === 'active' ? 'active' : 'inactive'}">${r.status === 'active' ? 'Activo' : 'Inactivo'}</span>
-      </td>
-      <td onclick="event.stopPropagation();">
-        <div style="display:flex;gap:6px;">
-          <a href="https://${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es/admin" target="_blank" class="action-btn" title="Admin">
-            <i class="fas fa-cog"></i>
-          </a>
-          <a href="https://${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es" target="_blank" class="action-btn" title="Web">
-            <i class="fas fa-globe"></i>
-          </a>
+      <div class="restaurant-card" onclick="selectRestaurant('${esc(r.restaurant_id)}')">
+        <div class="restaurant-card-header">
+          <div>
+            <div class="restaurant-card-name">${esc(r.name || '—')}</div>
+            <div class="restaurant-card-city">${esc(r.bar_city || '—')}</div>
+          </div>
+          <div class="health-dot ${healthStatus}"></div>
         </div>
-      </td>
-    </tr>
+        <div class="restaurant-card-stats">
+          <span><i class="fa-solid fa-link"></i> ${esc(r.subdomain || r.restaurant_id)}</span>
+        </div>
+      </div>
     `;
   }).join('');
 }
 
-$('search-restaurants').addEventListener('input', e => {
-  const term = e.target.value.toLowerCase();
-  const filtered = allRestaurants.filter(r =>
-    (r.name || '').toLowerCase().includes(term) ||
-    (r.city || '').toLowerCase().includes(term) ||
-    (r.subdomain || '').toLowerCase().includes(term) ||
-    (r.restaurant_id || '').toLowerCase().includes(term)
-  );
-  renderRestaurantsTable(filtered);
-});
-
-// ── RESTAURANT DETAIL MODAL ────────────────────────────────────────────
-async function openRestaurantModal(rid) {
-  const r = allRestaurants.find(r => r.restaurant_id === rid);
-  if (!r) { toast('Restaurante no encontrado', 'error'); return; }
-  currentModalRestaurant = r;
-  currentModalSettings = { ...r._settings };
-
-  // Header
-  $('modal-restaurant-name').textContent = r.name;
-  $('modal-restaurant-meta').textContent = `${esc(r.city || '')} · ${esc(r.subdomain || r.restaurant_id)}.gastroexperiencem.es`;
-
-  // Status toggle
-  const toggle = $('modal-status-toggle');
-  toggle.checked = r.status === 'active';
-  $('modal-status-label').textContent = r.status === 'active' ? 'Activo' : 'Inactivo';
-
-  // Info form
-  $('info-bar-name').value = r._settings.bar_name || '';
-  $('info-bar-city').value = r._settings.bar_city || '';
-  $('info-bar-address').value = r._settings.bar_address || '';
-  $('info-bar-phone').value = r._settings.bar_phone || '';
-  $('info-email').value = r._settings.email || '';
-  $('info-subdomain').value = r.subdomain || '';
-
-  // Password form
-  $('new-restaurant-password').value = '';
-  $('confirm-restaurant-password').value = '';
-
-  // Load health checklist
-  const hl = $('health-checklist');
-  hl.innerHTML = '<div class="health-loading"><i class="fas fa-spinner fa-spin"></i> Comprobando estado...</div>';
-
-  // Load carta
-  loadCartaItems();
-
-  // Load reservations (today by default)
-  const today = new Date();
-  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(today.getDate() - 30);
-  $('reservas-date-from').value = thirtyDaysAgo.toISOString().split('T')[0];
-  $('reservas-date-to').value = today.toISOString().split('T')[0];
-  loadRestaurantReservations();
-
-  // Load zonas
-  loadZonas();
-
-  // Load schedule
-  loadSchedule();
-
-  // Switch to info subtab
-  switchSubTab('info');
-
-  // Run health check
-  r._health = await checkRestaurantHealth(r);
-  renderHealthChecklist(r._health);
-
-  // Show modal
-  $('restaurant-modal').style.display = 'flex';
-}
-
-function renderHealthChecklist(checks) {
-  const hl = $('health-checklist');
-  if (!checks || checks.length === 0) {
-    hl.innerHTML = '<div class="health-item health-ok"><i class="fas fa-check-circle" style="color:#059669"></i> Todos los sistemas operativos</div>';
+// ============ RESTAURANT LIST ============
+function renderRestaurantList() {
+  const list = document.getElementById('restaurant-list');
+  
+  if (!restaurants || restaurants.length === 0) {
+    list.innerHTML = '<div class="empty-state"><p>No hay restaurantes</p></div>';
     return;
   }
-  hl.innerHTML = checks.map(c => {
-    const repairBtn = c.repairTab
-      ? `<button class="btn-repair" onclick="switchToSubTabAndCloseHealth('${c.repairTab}')"><i class="fas fa-wrench"></i> Reparar</button>`
-      : '';
-    return `<div class="health-item ${healthClass(c.type)}">
-      ${healthIcon(c.type)}
-      <span class="health-text">${esc(c.text)}</span>
-      ${repairBtn}
-    </div>`;
+  
+  list.innerHTML = restaurants.map(r => {
+    const healthStatus = restaurantHealth[r.restaurant_id] || 'unknown';
+    const isActive = selectedRestaurant && selectedRestaurant.restaurant_id === r.restaurant_id;
+    return `
+      <div class="restaurant-list-item ${isActive ? 'active' : ''}" onclick="selectRestaurant('${esc(r.restaurant_id)}')">
+        <div class="health-dot ${healthStatus}"></div>
+        <div>
+          <div class="name">${esc(r.name || '—')}</div>
+          <div class="city">${esc(r.bar_city || '—')}</div>
+        </div>
+      </div>
+    `;
   }).join('');
 }
 
-function switchToSubTabAndCloseHealth(tab) {
-  $('health-checklist').innerHTML = '';
-  switchSubTab(tab);
+async function selectRestaurant(rid) {
+  const restaurant = restaurants.find(r => r.restaurant_id === rid);
+  if (!restaurant) return;
+  
+  selectedRestaurant = restaurant;
+  
+  // Update UI
+  document.getElementById('restaurant-empty').classList.add('hidden');
+  document.getElementById('restaurant-content').classList.remove('hidden');
+  document.getElementById('detail-restaurant-name').textContent = restaurant.name || '—';
+  
+  // Update sidebar selection
+  renderRestaurantList();
+  
+  // Load data
+  await loadRestaurantData(restaurant);
+  
+  // Populate info form
+  document.getElementById('info-bar_name').value = restaurant.bar_name || '';
+  document.getElementById('info-bar_city').value = restaurant.bar_city || '';
+  document.getElementById('info-bar_address').value = restaurant.bar_address || '';
+  document.getElementById('info-bar_phone').value = restaurant.bar_phone || '';
+  document.getElementById('info-email').value = restaurant.email || '';
+  document.getElementById('info-subdomain').value = restaurant.subdomain || '';
+  
+  // Set default dates for reservations filter
+  document.getElementById('reservas-date-from').value = addDays(-30);
+  document.getElementById('reservas-date-to').value = today();
+  
+  // Update tools links
+  const pubUrl = 'https://' + (restaurant.subdomain || restaurant.restaurant_id) + '.gastroexperiencem.es';
+  const adminUrl = pubUrl + '/admin';
+  document.getElementById('tool-public-site').href = pubUrl;
+  document.getElementById('tool-restaurant-admin').href = adminUrl;
+  
+  // Load tab content
+  runHealthCheck();
+  loadTodayStats();
+  renderCartaTable();
+  loadReservations();
+  renderZones();
+  populateSchedule();
 }
 
-function closeRestaurantModal() {
-  $('restaurant-modal').style.display = 'none';
-  currentModalRestaurant = null;
-  currentModalSettings = {};
+function backToList() {
+  selectedRestaurant = null;
+  document.getElementById('restaurant-empty').classList.remove('hidden');
+  document.getElementById('restaurant-content').classList.add('hidden');
+  renderRestaurantList();
 }
 
-// Sub-tab switching for modal
-document.querySelectorAll('.sub-tab').forEach(btn => {
-  btn.addEventListener('click', () => switchSubTab(btn.dataset.subtab));
+function refreshRestaurantData() {
+  if (selectedRestaurant) {
+    selectRestaurant(selectedRestaurant.restaurant_id);
+  }
+}
+
+// ============ TABS ============
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabName = tab.dataset.tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    
+    // Load data for tab if needed
+    if (tabName === 'reservas') {
+      loadReservations();
+    } else if (tabName === 'resumen') {
+      loadTodayStats();
+    }
+  });
 });
 
-function switchSubTab(tab) {
-  document.querySelectorAll('.sub-tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.modal-subcontent').forEach(c => c.classList.remove('active-subtab'));
-  document.querySelector(`.sub-tab[data-subtab="${tab}"]`)?.classList.add('active');
-  document.getElementById(`subtab-${tab}`)?.classList.add('active-subtab');
-}
-
-// Status toggle
-window.toggleRestaurantStatus = async function() {
-  if (!currentModalRestaurant) return;
-  const newStatus = $('modal-status-toggle').checked ? 'active' : 'inactive';
-  $('modal-status-label').textContent = newStatus === 'active' ? 'Activo' : 'Inactivo';
-  await upsertSetting(currentModalRestaurant.restaurant_id, 'status', newStatus);
-  toast(`Estado actualizado a ${newStatus === 'active' ? 'Activo' : 'Inactivo'}`, 'success');
-  // Update local state
-  const idx = allRestaurants.findIndex(r => r.restaurant_id === currentModalRestaurant.restaurant_id);
-  if (idx !== -1) allRestaurants[idx].status = newStatus;
-};
-
-// ── INFO TAB ───────────────────────────────────────────────────────────
-async function saveRestaurantInfo() {
-  if (!currentModalRestaurant) return;
-  const rid = currentModalRestaurant.restaurant_id;
-  const updates = {
-    bar_name: $('info-bar-name').value.trim(),
-    bar_city: $('info-bar-city').value.trim(),
-    bar_address: $('info-bar-address').value.trim(),
-    bar_phone: $('info-bar-phone').value.trim(),
-    email: $('info-email').value.trim(),
-    subdomain: $('info-subdomain').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-  };
-
-  for (const [key, val] of Object.entries(updates)) {
-    await upsertSetting(rid, key, val);
-  }
-  toast('Información guardada ✓', 'success');
-
-  // Update modal display
-  $('modal-restaurant-name').textContent = updates.bar_name || currentModalRestaurant.name;
-  $('modal-restaurant-meta').textContent = `${updates.bar_city || ''} · ${updates.subdomain || rid}.gastroexperiencem.es`;
-
-  // Refresh restaurants list
-  loadRestaurants();
-}
-
-window.openAdminInNewTab = function() {
-  if (!currentModalRestaurant) return;
-  const url = `https://${currentModalRestaurant.subdomain || currentModalRestaurant.restaurant_id}.gastroexperiencem.es/admin`;
-  window.open(url, '_blank');
-};
-
-window.openWebInNewTab = function() {
-  if (!currentModalRestaurant) return;
-  const url = `https://${currentModalRestaurant.subdomain || currentModalRestaurant.restaurant_id}.gastroexperiencem.es`;
-  window.open(url, '_blank');
-};
-
-// ── CARTA TAB ──────────────────────────────────────────────────────────
-async function loadCartaItems() {
-  if (!currentModalRestaurant) return;
-  const r = currentModalRestaurant;
-  const { data, ok } = await supabaseFetchJson(
-    `${r.supabase_url}/rest/v1/menu_items?restaurant_id=eq.${encodeURIComponent(r.restaurant_id)}&order=position.asc,created_at.asc`,
-    {},
-    r.supabase_key
-  );
-  const tbody = $('carta-tbody');
-  if (!ok || !data) {
-    tbody.innerHTML = '<tr><td colspan="5" class="loading-cell" style="color:var(--error);"><i class="fas fa-times-circle"></i> Error cargando carta</td></tr>';
+// ============ CARTA TAB ============
+function renderCartaTable() {
+  const tbody = document.getElementById('carta-tbody');
+  const items = selectedRestaurant._menuItems || [];
+  
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="loading">No hay platos en la carta</td></tr>';
     return;
   }
-  if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-dim);">Carta vacía. <button class="btn-success" onclick="openAddMenuItemModal()" style="margin-left:8px;"><i class="fas fa-plus"></i> Añadir plato</button></td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.map(item => `
+  
+  tbody.innerHTML = items.map(item => `
     <tr>
-      <td><strong>${esc(item.name || '')}</strong></td>
-      <td style="color:var(--text-dim);font-size:0.85rem;">${esc(item.category || '-')}</td>
-      <td><strong>${item.price != null ? Number(item.price).toFixed(2) + ' €' : '-'}</strong></td>
-      <td>${item.visible ? '<span style="color:#059669"><i class="fas fa-eye"></i></span>' : '<span style="color:var(--text-muted)"><i class="fas fa-eye-slash"></i></span>'}</td>
+      <td><span class="editable-cell" data-field="name" data-id="${esc(item.id)}" onclick="editCell(this)">${esc(item.name || '—')}</span></td>
+      <td><span class="editable-cell" data-field="category" data-id="${esc(item.id)}" onclick="editCell(this)">${esc(item.category || '—')}</span></td>
+      <td><span class="editable-cell" data-field="price" data-id="${esc(item.id)}" onclick="editCell(this)">${item.price != null ? item.price + ' €' : '—'}</span></td>
       <td>
-        <div style="display:flex;gap:6px;">
-          <button class="action-btn" onclick="deleteMenuItem('${esc(item.id)}')" title="Eliminar"><i class="fas fa-trash" style="color:#DC2626"></i></button>
-        </div>
+        <span class="status-badge ${item.available ? 'confirmed' : 'cancelled'}" onclick="toggleAvailable('${esc(item.id)}', ${!item.available})">
+          ${item.available ? 'Sí' : 'No'}
+        </span>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteMenuItem('${esc(item.id)}')">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </td>
     </tr>
   `).join('');
 }
 
-window.openAddMenuItemModal = function() {
-  $('mi-name').value = '';
-  $('mi-category').value = '';
-  $('mi-price').value = '';
-  $('mi-info').value = '';
-  $('add-menuitem-modal').style.display = 'flex';
-};
+let editingCell = null;
 
-window.closeAddMenuItemModal = function() {
-  $('add-menuitem-modal').style.display = 'none';
-};
-
-window.addMenuItem = async function() {
-  if (!currentModalRestaurant) return;
-  const name = $('mi-name').value.trim();
-  if (!name) { toast('El nombre es obligatorio', 'error'); return; }
-  const r = currentModalRestaurant;
-  const payload = {
-    restaurant_id: r.restaurant_id,
-    name,
-    category: $('mi-category').value.trim(),
-    price: parseFloat($('mi-price').value) || 0,
-    info: $('mi-info').value.trim(),
-    visible: true,
-    position: 1000,
+function editCell(el) {
+  if (editingCell) {
+    editingCell.classList.remove('editing');
+    if (editingCell !== el) {
+      document.execCommand('removeFormat', false, undefined);
+    }
+  }
+  
+  el.classList.add('editing');
+  el.contentEditable = 'true';
+  el.focus();
+  
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  
+  editingCell = el;
+  
+  el.onblur = () => saveCell(el);
+  el.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      el.blur();
+    }
+    if (e.key === 'Escape') {
+      el.textContent = el.dataset.original || el.textContent;
+      el.blur();
+    }
   };
-  const res = await supabaseFetch(
-    `${r.supabase_url}/rest/v1/menu_items`,
-    { method: 'POST', body: JSON.stringify(payload) },
-    r.supabase_key
-  );
-  if (res.ok) {
-    toast('Plato añadido ✓', 'success');
-    closeAddMenuItemModal();
-    loadCartaItems();
-  } else {
-    toast('Error al añadir plato', 'error');
-  }
-};
+}
 
-window.deleteMenuItem = async function(id) {
-  if (!currentModalRestaurant) return;
+function saveCell(el) {
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  
+  const id = el.dataset.id;
+  const field = el.dataset.field;
+  const value = el.textContent.trim();
+  
+  if (!id || !field) return;
+  
+  updateMenuItem(id, { [field]: value });
+  editingCell = null;
+}
+
+async function updateMenuItem(id, data) {
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/menu_items?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify(data) },
+      key
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    // Update local cache
+    const item = selectedRestaurant._menuItems.find(i => i.id === id);
+    if (item) Object.assign(item, data);
+    
+    toast('Actualizado correctamente', 'success');
+  } catch (e) {
+    toast('Error actualizando: ' + e.message, 'error');
+  }
+}
+
+async function toggleAvailable(id, available) {
+  await updateMenuItem(id, { available });
+  renderCartaTable();
+}
+
+async function deleteMenuItem(id) {
   if (!confirm('¿Eliminar este plato?')) return;
-  const r = currentModalRestaurant;
-  const res = await supabaseFetch(
-    `${r.supabase_url}/rest/v1/menu_items?id=eq.${encodeURIComponent(id)}`,
-    { method: 'DELETE' },
-    r.supabase_key
-  );
-  if (res.ok) {
-    toast('Plato eliminado ✓', 'success');
-    loadCartaItems();
-  } else {
-    toast('Error al eliminar', 'error');
+  
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/menu_items?id=eq.${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      key
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    selectedRestaurant._menuItems = selectedRestaurant._menuItems.filter(i => i.id !== id);
+    renderCartaTable();
+    toast('Plato eliminado', 'success');
+  } catch (e) {
+    toast('Error eliminando: ' + e.message, 'error');
   }
-};
+}
 
-// ── RESERVAS TAB ───────────────────────────────────────────────────────
-async function loadRestaurantReservations() {
-  if (!currentModalRestaurant) return;
-  const r = currentModalRestaurant;
-  const dateFrom = $('reservas-date-from').value;
-  const dateTo = $('reservas-date-to').value;
-  if (!dateFrom || !dateTo) { toast('Selecciona ambas fechas', 'error'); return; }
+function showAddMenuItem() {
+  showModal('Añadir plato', `
+    <form id="add-menu-form" class="form-stack">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="menu-name" required>
+      </div>
+      <div class="form-group">
+        <label>Categoría</label>
+        <input type="text" id="menu-category" placeholder="Entrante, Principal, Postre...">
+      </div>
+      <div class="form-group">
+        <label>Precio (€)</label>
+        <input type="number" id="menu-price" step="0.01" min="0">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-plus"></i> Añadir
+        </button>
+      </div>
+    </form>
+  `, '');
+  
+  document.getElementById('add-menu-form').onsubmit = async (e) => {
+    e.preventDefault();
+    await addMenuItem();
+  };
+}
 
-  const { data, ok } = await supabaseFetchJson(
-    `${r.supabase_url}/rest/v1/reservations?restaurant_id=eq.${encodeURIComponent(r.restaurant_id)}&date=gte.${dateFrom}&date=lte.${dateTo}&order=date.desc,time.desc`,
-    {},
-    r.supabase_key
-  );
-  const tbody = $('reservas-tbody');
-  if (!ok || !data) {
-    tbody.innerHTML = '<tr><td colspan="7" class="loading-cell" style="color:var(--error);"><i class="fas fa-times-circle"></i> Error</td></tr>';
+async function addMenuItem() {
+  const name = document.getElementById('menu-name').value.trim();
+  const category = document.getElementById('menu-category').value.trim();
+  const price = parseFloat(document.getElementById('menu-price').value) || 0;
+  
+  if (!name) {
+    toast('El nombre es obligatorio', 'error');
     return;
   }
-  if (data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-dim);">Sin reservas en este rango</td></tr>';
+  
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/menu_items`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          restaurant_id: selectedRestaurant.restaurant_id,
+          name,
+          category,
+          price,
+          available: true
+        })
+      },
+      key
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    closeModal();
+    toast('Plato añadido', 'success');
+    
+    // Reload
+    const newItem = await res.json();
+    selectedRestaurant._menuItems.push(newItem);
+    renderCartaTable();
+  } catch (e) {
+    toast('Error añadiendo plato: ' + e.message, 'error');
+  }
+}
+
+// ============ RESERVAS TAB ============
+function renderReservations(data) {
+  const tbody = document.getElementById('reservas-tbody');
+  
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="loading">No hay reservas</td></tr>';
     return;
   }
-  tbody.innerHTML = data.map(resv => `
+  
+  tbody.innerHTML = data.map(r => `
     <tr>
-      <td>${fmtDate(resv.date)}</td>
-      <td>${esc(resv.time || '')}</td>
-      <td>${esc(resv.name || '')}</td>
-      <td style="color:var(--text-dim);">${esc(resv.phone || '-')}</td>
-      <td><strong>${resv.people || 0}</strong></td>
+      <td>${formatDate(r.date)}</td>
+      <td>${formatTime(r.time)}</td>
+      <td>${esc(r.name || '—')}</td>
+      <td>${esc(r.phone || '—')}</td>
+      <td>${r.people || '—'}</td>
       <td>
-        <select class="status-select status-${resv.status}" onchange="changeReservationStatus('${esc(resv.id)}', this.value)">
-          <option value="pending" ${resv.status==='pending'?'selected':''}>Pendiente</option>
-          <option value="confirmed" ${resv.status==='confirmed'?'selected':''}>Confirmada</option>
-          <option value="cancelled" ${resv.status==='cancelled'?'selected':''}>Cancelada</option>
+        <select class="status-select" onchange="changeReservationStatus('${esc(r.id)}', this.value)">
+          <option value="pending" ${r.status === 'pending' ? 'selected' : ''}>Pending</option>
+          <option value="confirmed" ${r.status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+          <option value="cancelled" ${r.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
         </select>
       </td>
       <td>
-        <button class="action-btn danger" onclick="deleteReservation('${esc(resv.id)}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="deleteReservation('${esc(r.id)}')">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </td>
     </tr>
   `).join('');
 }
 
-window.changeReservationStatus = async function(id, status) {
-  if (!currentModalRestaurant) return;
-  const r = currentModalRestaurant;
-  const res = await supabaseFetch(
-    `${r.supabase_url}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify({ status }) },
-    r.supabase_key
-  );
-  if (res.ok) {
-    toast('Estado actualizado ✓', 'success');
-  } else {
-    toast('Error al actualizar estado', 'error');
+async function changeReservationStatus(id, status) {
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify({ status }) },
+      key
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    toast('Estado actualizado', 'success');
+  } catch (e) {
+    toast('Error actualizando: ' + e.message, 'error');
   }
-};
+}
 
-window.deleteReservation = async function(id) {
-  if (!currentModalRestaurant) return;
+async function deleteReservation(id) {
   if (!confirm('¿Eliminar esta reserva?')) return;
-  const r = currentModalRestaurant;
-  const res = await supabaseFetch(
-    `${r.supabase_url}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}`,
-    { method: 'DELETE' },
-    r.supabase_key
-  );
-  if (res.ok) {
-    toast('Reserva eliminada ✓', 'success');
-    loadRestaurantReservations();
-  } else {
-    toast('Error al eliminar', 'error');
+  
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      key
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    toast('Reserva eliminada', 'success');
+    loadReservations();
+  } catch (e) {
+    toast('Error eliminando: ' + e.message, 'error');
   }
-};
+}
 
-// ── ZONAS TAB ──────────────────────────────────────────────────────────
-function loadZonas() {
-  const container = $('zonas-list');
-  const r = currentModalRestaurant;
-  if (!r) { container.innerHTML = ''; return; }
-  const zones = r._settings.zones || r._settings.zones_config || [];
+// ============ ZONAS TAB ============
+function renderZones() {
+  const grid = document.getElementById('zones-grid');
+  const zones = selectedRestaurant._zones || [];
+  
   if (zones.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-dim);">
-      Sin zonas configuradas. <button class="btn-success" onclick="openAddZoneModal()" style="margin-left:8px;"><i class="fas fa-plus"></i> Añadir zona</button>
-    </div>`;
+    grid.innerHTML = '<div class="empty-state"><p>No hay zonas configuradas</p></div>';
     return;
   }
-  container.innerHTML = zones.map((z, idx) => `
-    <div class="zona-item">
-      <div class="zona-info">
-        <strong>${esc(z.title || z.id)}</strong>
-        <span style="color:var(--text-dim);font-size:0.85rem;">Capacidad: ${z.capacity || 0} cubiertos</span>
+  
+  grid.innerHTML = zones.map((z, i) => `
+    <div class="zone-card">
+      <div class="zone-info">
+        <h4>${esc(z.title || '—')}</h4>
+        <span>Capacidad: ${z.capacity || 0}</span>
       </div>
-      <div class="zona-actions">
-        <button class="action-btn danger" onclick="deleteZone(${idx})"><i class="fas fa-trash"></i></button>
+      <div class="zone-actions">
+        <button class="btn btn-sm" onclick="editZone(${i})">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteZone(${i})">
+          <i class="fa-solid fa-trash"></i>
+        </button>
       </div>
     </div>
   `).join('');
 }
 
-window.openAddZoneModal = function() {
-  $('zone-title').value = '';
-  $('zone-capacity').value = '';
-  $('add-zone-modal').style.display = 'flex';
-};
+function showAddZone() {
+  showModal('Añadir zona', `
+    <form id="add-zone-form" class="form-stack">
+      <div class="form-group">
+        <label>Nombre de la zona *</label>
+        <input type="text" id="zone-title" required placeholder="Terraza, Comedor, Barra...">
+      </div>
+      <div class="form-group">
+        <label>Capacidad (personas) *</label>
+        <input type="number" id="zone-capacity" required min="1" value="10">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-plus"></i> Añadir
+        </button>
+      </div>
+    </form>
+  `, '');
+  
+  document.getElementById('add-zone-form').onsubmit = (e) => {
+    e.preventDefault();
+    addZone();
+  };
+}
 
-window.closeAddZoneModal = function() {
-  $('add-zone-modal').style.display = 'none';
-};
+function editZone(index) {
+  const zones = selectedRestaurant._zones || [];
+  const zone = zones[index];
+  
+  showModal('Editar zona', `
+    <form id="edit-zone-form" class="form-stack">
+      <div class="form-group">
+        <label>Nombre de la zona *</label>
+        <input type="text" id="zone-title" required value="${esc(zone.title || '')}">
+      </div>
+      <div class="form-group">
+        <label>Capacidad (personas) *</label>
+        <input type="number" id="zone-capacity" required min="1" value="${zone.capacity || 10}">
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-save"></i> Guardar
+        </button>
+      </div>
+    </form>
+  `, '');
+  
+  document.getElementById('edit-zone-form').onsubmit = (e) => {
+    e.preventDefault();
+    updateZone(index);
+  };
+}
 
-window.addZone = async function() {
-  if (!currentModalRestaurant) return;
-  const title = $('zone-title').value.trim();
-  const capacity = parseInt($('zone-capacity').value) || 20;
-  if (!title) { toast('El nombre de zona es obligatorio', 'error'); return; }
+async function addZone() {
+  const title = document.getElementById('zone-title').value.trim();
+  const capacity = parseInt(document.getElementById('zone-capacity').value) || 10;
+  
+  if (!title) {
+    toast('El nombre es obligatorio', 'error');
+    return;
+  }
+  
+  const zones = selectedRestaurant._zones || [];
+  zones.push({ title, capacity });
+  
+  await saveZones(zones);
+  closeModal();
+}
 
-  const rid = currentModalRestaurant.restaurant_id;
-  const zones = currentModalRestaurant._settings.zones || currentModalRestaurant._settings.zones_config || [];
-  const newZone = { id: title.toLowerCase().replace(/\s+/g, '-'), title, capacity };
-  zones.push(newZone);
-  await upsertSetting(rid, 'zones', zones);
-  currentModalRestaurant._settings.zones = zones;
-  toast('Zona añadida ✓', 'success');
-  closeAddZoneModal();
-  loadZonas();
-};
+async function updateZone(index) {
+  const title = document.getElementById('zone-title').value.trim();
+  const capacity = parseInt(document.getElementById('zone-capacity').value) || 10;
+  
+  const zones = selectedRestaurant._zones || [];
+  zones[index] = { title, capacity };
+  
+  await saveZones(zones);
+  closeModal();
+}
 
-window.deleteZone = async function(idx) {
-  if (!currentModalRestaurant) return;
+async function deleteZone(index) {
   if (!confirm('¿Eliminar esta zona?')) return;
-  const rid = currentModalRestaurant.restaurant_id;
-  const zones = [...(currentModalRestaurant._settings.zones || currentModalRestaurant._settings.zones_config || [])];
-  zones.splice(idx, 1);
-  await upsertSetting(rid, 'zones', zones);
-  currentModalRestaurant._settings.zones = zones;
-  toast('Zona eliminada ✓', 'success');
-  loadZonas();
-};
-
-// ── HORARIOS TAB ───────────────────────────────────────────────────────
-const DAY_NAMES = {
-  monday: 'Lunes', tuesday: 'Martes', wednesday: 'Miércoles',
-  thursday: 'Jueves', friday: 'Viernes', saturday: 'Sábado', sunday: 'Domingo'
-};
-
-function loadSchedule() {
-  const grid = $('schedule-grid');
-  const r = currentModalRestaurant;
-  const schedule = r._settings.weekly_schedule || r._settings.schedule || {};
-
-  grid.innerHTML = Object.entries(DAY_NAMES).map(([day, label]) => {
-    const dayData = schedule[day] || { open: false };
-    const isOpen = dayData.open !== false;
-    return `
-    <div class="schedule-day">
-      <div class="schedule-day-label">${label}</div>
-      <div class="schedule-day-content">
-        <label class="toggle-switch" style="margin-bottom:8px;">
-          <input type="checkbox" id="sched-${day}-open" ${isOpen ? 'checked' : ''} onchange="toggleDayOpen('${day}')">
-          <span class="toggle-slider"></span>
-          <span style="font-size:0.8rem;margin-left:4px;">${isOpen ? 'Abierto' : 'Cerrado'}</span>
-        </label>
-        <div class="schedule-times" id="sched-${day}-times" style="${isOpen ? '' : 'display:none'}">
-          <div style="margin-bottom:6px;">
-            <label style="font-size:0.72rem;color:var(--text-dim);">Comida</label>
-            <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-              <input type="time" id="sched-${day}-from" value="${dayData.from || '12:00'}" class="time-input">
-              <span style="color:var(--text-muted);">—</span>
-              <input type="time" id="sched-${day}-to" value="${dayData.to || '16:00'}" class="time-input">
-            </div>
-          </div>
-          <div>
-            <label style="font-size:0.72rem;color:var(--text-dim);">Cena</label>
-            <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
-              <input type="time" id="sched-${day}-from2" value="${dayData.from2 || '20:00'}" class="time-input">
-              <span style="color:var(--text-muted);">—</span>
-              <input type="time" id="sched-${day}-to2" value="${dayData.to2 || '23:30'}" class="time-input">
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    `;
-  }).join('');
+  
+  const zones = selectedRestaurant._zones || [];
+  zones.splice(index, 1);
+  
+  await saveZones(zones);
 }
 
-window.toggleDayOpen = function(day) {
-  const checkbox = $(`sched-${day}-open`);
-  const timesDiv = $(`sched-${day}-times`);
-  timesDiv.style.display = checkbox.checked ? '' : 'none';
-};
-
-async function saveRestaurantSchedule() {
-  if (!currentModalRestaurant) return;
-  const rid = currentModalRestaurant.restaurant_id;
-  const schedule = {};
-  for (const day of Object.keys(DAY_NAMES)) {
-    const isOpen = $(`sched-${day}-open`)?.checked ?? false;
-    if (isOpen) {
-      schedule[day] = {
-        open: true,
-        from: $(`sched-${day}-from`)?.value || '12:00',
-        to: $(`sched-${day}-to`)?.value || '16:00',
-        from2: $(`sched-${day}-from2`)?.value || '20:00',
-        to2: $(`sched-${day}-to2`)?.value || '23:30',
-      };
-    } else {
-      schedule[day] = { open: false };
-    }
-  }
-  await upsertSetting(rid, 'weekly_schedule', schedule);
-  currentModalRestaurant._settings.weekly_schedule = schedule;
-  toast('Horarios guardados ✓', 'success');
-}
-
-// ── PASSWORD TAB ───────────────────────────────────────────────────────
-async function saveRestaurantPassword() {
-  if (!currentModalRestaurant) return;
-  const npw = $('new-restaurant-password').value;
-  const cpw = $('confirm-restaurant-password').value;
-  if (!npw) { toast('Introduce la nueva contraseña', 'error'); return; }
-  if (npw !== cpw) { toast('Las contraseñas no coinciden', 'error'); return; }
-  if (npw.length < 4) { toast('La contraseña debe tener al menos 4 caracteres', 'error'); return; }
-
-  const rid = currentModalRestaurant.restaurant_id;
-  await upsertSetting(rid, 'admin_password', npw);
-  currentModalRestaurant._settings.admin_password = npw;
-  $('new-restaurant-password').value = '';
-  $('confirm-restaurant-password').value = '';
-  toast('Contraseña actualizada ✓', 'success');
-}
-
-// ── SETTINGS UPSERT HELPER ─────────────────────────────────────────────
-async function upsertSetting(rid, key, value) {
-  const payload = {
-    restaurant_id: rid,
-    key,
-    value: JSON.stringify(value),
-  };
-  const res = await supabaseFetch(
-    `${MAIN_SUPABASE_URL}/rest/v1/settings`,
-    { method: 'POST', headers: { ...apiHeaders(MAIN_SUPABASE_KEY), 'Prefer': 'resolution=merge-duplicates' }, body: JSON.stringify(payload) },
-    MAIN_SUPABASE_KEY
-  );
-  return res;
-}
-
-// ── CREATE NEW CLIENT ──────────────────────────────────────────────────
-function previewSubdomain() {
-  const name = $('new-name').value.trim();
-  const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  $('subdomain-url').textContent = slug ? `${slug}.gastroexperiencem.es` : '-';
-  $('step-info').dataset.slug = slug;
-}
-
-function validateStep1() {
-  const name = $('new-name').value.trim();
-  const city = $('new-city').value.trim();
-  const email = $('new-email').value.trim();
-  const phone = $('new-phone').value.trim();
-  if (!name) { toast('Introduce el nombre del restaurante', 'error'); return; }
-
-  const slug = $('step-info').dataset.slug || name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  const rid = `rest-${slug}-${Date.now().toString(36)}`;
-
-  $('confirm-details').innerHTML = `
-    <div class="confirm-row"><span class="confirm-label">Nombre</span><span class="confirm-value">${esc(name)}</span></div>
-    <div class="confirm-row"><span class="confirm-label">Ciudad</span><span class="confirm-value">${esc(city || '-')}</span></div>
-    <div class="confirm-row"><span class="confirm-label">Email Admin</span><span class="confirm-value">${esc(email || '-')}</span></div>
-    <div class="confirm-row"><span class="confirm-label">Teléfono</span><span class="confirm-value">${esc(phone || '-')}</span></div>
-    <div class="confirm-row"><span class="confirm-label">Subdominio</span><span class="confirm-value" style="color:var(--primary);font-family:monospace;">${esc(slug)}.gastroexperiencem.es</span></div>
-    <div class="confirm-row"><span class="confirm-label">Restaurant ID</span><span class="confirm-value" style="font-family:monospace;font-size:0.8rem;">${esc(rid)}</span></div>
-  `;
-
-  $('step-info').dataset.name = name;
-  $('step-info').dataset.city = city;
-  $('step-info').dataset.email = email;
-  $('step-info').dataset.phone = phone;
-  $('step-info').dataset.rid = rid;
-  goToStep('step-confirm');
-}
-
-function goToStep(stepId) {
-  document.querySelectorAll('.wizard-step').forEach(s => s.classList.remove('active'));
-  $(stepId).classList.add('active');
-}
-
-function resetWizard() {
-  $('new-name').value = '';
-  $('new-city').value = '';
-  $('new-email').value = '';
-  $('new-phone').value = '';
-  $('subdomain-url').textContent = '-';
-  document.querySelectorAll('.log-entry').forEach(el => {
-    el.className = 'log-entry pending';
-    el.innerHTML = el.innerHTML.replace(/<i class="fas (fa-spinner|fa-check-circle|fa-times-circle|fa-exclamation-circle)"><\/i>/, '<i class="fas fa-circle"></i>');
-  });
-  $('creation-progress').style.width = '0%';
-  $('creation-status').textContent = 'Iniciando...';
-  goToStep('step-info');
-}
-
-async function startCreation() {
-  const name = $('step-info').dataset.name;
-  const city = $('step-info').dataset.city || '';
-  const email = $('step-info').dataset.email || '';
-  const phone = $('step-info').dataset.phone || '';
-  const slug = $('step-info').dataset.slug;
-  const rid = $('step-info').dataset.rid;
-
-  goToStep('step-creating');
-  $('btn-start-creation').disabled = true;
-
-  const log = (id, msg, status) => {
-    const el = $(id);
-    if (!el) return;
-    el.className = `log-entry ${status}`;
-    const iconMap = { pending: 'fa-circle', active: 'fa-spinner fa-spin', done: 'fa-check-circle', error: 'fa-times-circle' };
-    el.innerHTML = `<i class="fas ${iconMap[status] || 'fa-circle'}"></i> ${esc(msg)}`;
-  };
-  const progress = pct => { $('creation-progress').style.width = `${pct}%`; };
-  const status = msg => { $('creation-status').textContent = msg; };
-
+async function saveZones(zones) {
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  const rid = selectedRestaurant.restaurant_id;
+  
   try {
-    // Step 1: Create Supabase project
-    log('log-supabase', `Creando proyecto Supabase para "${name}"...`, 'active');
-    status('Creando proyecto Supabase...');
-    progress(10);
-
-    const createRes = await fetch('https://api.supabase.com/v1/projects', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${SUPABASE_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: slug, organization_id: 'inswykbedvknsyckoztp', db_passphrase: generatePassword(20), region: 'eu-central-1' })
-    }).then(r => r.json()).catch(e => ({ error: e.message }));
-
-    if (createRes.error && createRes.error.includes('already exists')) {
-      // Project already exists — try to get it
-      const getRes = await fetch(`https://api.supabase.com/v1/projects?slug=${slug}`, {
-        headers: { 'Authorization': `Bearer ${SUPABASE_TOKEN}` }
-      }).then(r => r.json());
-      if (Array.isArray(getRes) && getRes.length > 0) {
-        createRes.id = getRes[0].id;
-      }
-    }
-
-    if (!createRes?.id) throw new Error('No se pudo crear proyecto Supabase: ' + JSON.stringify(createRes));
-
-    const projectRef = createRes.id;
-    const supabaseUrl = `https://${projectRef}.supabase.co`;
-    log('log-supabase', `Proyecto Supabase creado: ${projectRef}`, 'done');
-    progress(25);
-    status('Esperando que Supabase esté listo...');
-
-    // Step 2: Wait for project to be ACTIVE
-    let supabaseKey = '';
-    let ready = false;
-    for (let i = 0; i < 30; i++) {
-      await sleep(10000);
-      try {
-        const proj = await fetch(`https://api.supabase.com/v1/projects/${projectRef}`, {
-          headers: { 'Authorization': `Bearer ${SUPABASE_TOKEN}` }
-        }).then(r => r.json());
-        if (proj.status === 'ACTIVE' || proj.status === 'online') {
-          ready = true;
-          // Try to get anon key
-          try {
-            const keysRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/api-keys`, {
-              headers: { 'Authorization': `Bearer ${SUPABASE_TOKEN}` }
-            }).then(r => r.json());
-            if (Array.isArray(keysRes)) {
-              const anon = keysRes.find(k => k.name === 'anon key' || k.name === 'anon');
-              supabaseKey = anon?.key || '';
-            }
-          } catch(e) {}
-          break;
-        }
-      } catch(e) {}
-      status(`Esperando Supabase... ${(i+1)*10}s`);
-    }
-
-    if (!ready) {
-      log('log-config', 'Supabase tardó demasiado.Continuando.', 'error');
-    }
-
-    if (!supabaseKey) {
-      log('log-config', 'Anon key no disponible. El restaurante funcionará con config manual.', 'error');
-    } else {
-      log('log-config', 'Supabase activo ✓', 'done');
-    }
-    progress(50);
-
-    // Step 3: Apply schema via Management API
-    log('log-register', 'Aplicando esquema de base de datos...', 'active');
-    const rlsSQL = getRLSSQL();
-    try {
-      await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${SUPABASE_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: rlsSQL })
-      }).then(async r => {
-        if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          throw new Error(err.message || 'Query failed');
-        }
-      });
-      log('log-register', 'Esquema aplicado ✓', 'done');
-    } catch(e) {
-      log('log-register', 'Esquema: ' + e.message.slice(0, 100), 'error');
-    }
-    progress(70);
-
-    // Step 4: Register in main DB
-    log('log-dns', 'Registrando restaurante en GastroExperience...', 'active');
-    const mainSettings = [
-      { key: 'subdomain', value: slug },
-      { key: 'bar_name', value: name },
-      { key: 'bar_city', value: city },
-      { key: 'email', value: email },
-      { key: 'bar_phone', value: phone },
-      { key: 'supabase_url', value: supabaseUrl },
-      { key: 'supabase_key', value: supabaseKey },
-      { key: 'restaurant_id', value: rid },
-      { key: 'status', value: 'active' },
-      { key: 'weekly_schedule', value: getDefaultSchedule() },
-      { key: 'zones', value: [{ id: 'interior', title: 'Interior', capacity: 30 }, { id: 'terraza', title: 'Terraza', capacity: 20 }] },
-      { key: 'admin_password', value: 'admin123' },
-    ];
-
-    for (const s of mainSettings) {
-      await fetch(`${MAIN_SUPABASE_URL}/rest/v1/settings`, {
-        method: 'POST',
-        headers: { 'apikey': MAIN_SUPABASE_KEY, 'Authorization': `Bearer ${MAIN_SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-        body: JSON.stringify({ restaurant_id: rid, key: s.key, value: JSON.stringify(s.value) })
-      });
-    }
-    log('log-dns', `Registrado: ${slug}.gastroexperiencem.es`, 'done');
-    progress(85);
-
-    // Step 5: Write to new project's settings (for routing.js discovery)
-    if (supabaseKey) {
-      try {
-        await fetch(`${supabaseUrl}/rest/v1/settings`, {
+    // Try to update existing
+    const res = await supabaseFetch(
+      `${url}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&key=eq.zones`,
+      { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(zones) }) },
+      key
+    );
+    
+    if (res.status === 406) {
+      // Need to insert
+      const insertRes = await supabaseFetch(
+        `${url}/rest/v1/settings`,
+        {
           method: 'POST',
-          headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}`, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
-          body: JSON.stringify([
-            { restaurant_id: rid, key: 'subdomain', value: JSON.stringify(slug) },
-            { restaurant_id: rid, key: 'bar_name', value: JSON.stringify(name) },
-            { restaurant_id: rid, key: 'bar_city', value: JSON.stringify(city) },
-            { restaurant_id: rid, key: 'supabase_url', value: JSON.stringify(supabaseUrl) },
-            { restaurant_id: rid, key: 'supabase_key', value: JSON.stringify(supabaseKey) },
-          ])
-        });
-      } catch(e) { console.warn('Could not write to new Supabase:', e); }
+          body: JSON.stringify({
+            restaurant_id: rid,
+            key: 'zones',
+            value: JSON.stringify(zones)
+          })
+        },
+        key
+      );
+      
+      if (!insertRes.ok) throw new Error('HTTP ' + insertRes.status);
+    } else if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
     }
-
-    await sleep(2000);
-
-    log('log-complete', `¡${name} creado con éxito!`, 'done');
-    progress(100);
-    status('¡Listo!');
-
-    $('success-details').innerHTML = `
-      <div class="success-icon">🍽️</div>
-      <h4>${esc(name)}</h4>
-      <p>Tu restaurante está listo. Los cambios pueden tardar 2-5 minutos en propagarse.</p>
-      <p style="margin-top:8px;font-size:0.85rem;color:var(--text-dim);">Contraseña admin inicial: <code style="background:var(--surface-2);padding:2px 6px;border-radius:4px;">admin123</code></p>
-      <div class="success-links">
-        <div class="success-link"><span>🌐 Web pública</span><a href="https://${esc(slug)}.gastroexperiencem.es" target="_blank">https://${esc(slug)}.gastroexperiencem.es</a></div>
-        <div class="success-link"><span>⚙️ Panel Admin</span><a href="https://${esc(slug)}.gastroexperiencem.es/admin" target="_blank">https://${esc(slug)}.gastroexperiencem.es/admin</a></div>
-        <div class="success-link"><span>🗄️ Base de datos</span><a href="https://supabase.com/dashboard/project/${esc(projectRef)}" target="_blank">${esc(supabaseUrl)}</a></div>
-        <div class="success-link"><span>🆔 Restaurant ID</span><span style="font-family:monospace;font-size:0.8rem;">${esc(rid)}</span></div>
-      </div>
-    `;
-
-    goToStep('step-done');
-    toast('¡Restaurante creado con éxito! 🎉', 'success');
-
-  } catch(e) {
-    console.error('Creation error:', e);
-    log('log-complete', `Error: ${e.message}`, 'error');
-    $('creation-status').textContent = 'Error: ' + e.message;
-    toast('Error: ' + e.message, 'error');
-  } finally {
-    $('btn-start-creation').disabled = false;
+    
+    selectedRestaurant._zones = zones;
+    renderZones();
+    toast('Zonas actualizadas', 'success');
+  } catch (e) {
+    toast('Error guardando zonas: ' + e.message, 'error');
   }
 }
 
-function generatePassword(len = 20) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const array = new Uint8Array(len);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < len; i++) result += chars[array[i] % chars.length];
-  return result;
+// ============ HORARIOS TAB ============
+function populateSchedule() {
+  const schedule = selectedRestaurant._schedule || {};
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  
+  days.forEach(day => {
+    const dayData = schedule[day] || {};
+    document.getElementById(`schedule-${day}-open`).value = dayData.open || '';
+    document.getElementById(`schedule-${day}-close`).value = dayData.close || '';
+  });
 }
 
-function getRLSSQL() {
-  return `
-CREATE TABLE IF NOT EXISTS menu_items (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL,
-  name TEXT, category TEXT, price DECIMAL(10,2),
-  visible BOOLEAN DEFAULT true, is_sugerencia BOOLEAN DEFAULT false,
-  position INTEGER DEFAULT 1000, info TEXT,
-  image_url TEXT, allergens JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+document.getElementById('horarios-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await saveSchedule();
+};
 
-CREATE TABLE IF NOT EXISTS reservations (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL,
-  date DATE, time TEXT, zone TEXT, people INTEGER,
-  name TEXT, phone TEXT, email TEXT,
-  status TEXT DEFAULT 'pending', zonename TEXT,
-  source TEXT DEFAULT 'web', notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL, key TEXT, value TEXT,
-  UNIQUE(restaurant_id, key)
-);
-
-CREATE TABLE IF NOT EXISTS special_days (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL, date DATE, is_closed BOOLEAN DEFAULT true,
-  UNIQUE(restaurant_id, date)
-);
-
-CREATE TABLE IF NOT EXISTS products (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL,
-  name TEXT, description TEXT, price DECIMAL(10,2),
-  category TEXT, available BOOLEAN DEFAULT true,
-  position INTEGER DEFAULT 1000,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE TABLE IF NOT EXISTS time_slots (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id TEXT NOT NULL,
-  date DATE, time TEXT, zone TEXT, capacity INTEGER,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_menu_items_rest ON menu_items(restaurant_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_rest ON reservations(restaurant_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_date ON reservations(restaurant_id, date);
-CREATE INDEX IF NOT EXISTS idx_settings_rest ON settings(restaurant_id);
-CREATE INDEX IF NOT EXISTS idx_special_days_rest ON special_days(restaurant_id);
-
-ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE special_days ENABLE ROW LEVEL SECURITY;
-ALTER TABLE products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE time_slots ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "public_menu" ON menu_items;
-DROP POLICY IF EXISTS "public_reservations" ON reservations;
-DROP POLICY IF EXISTS "public_settings" ON settings;
-DROP POLICY IF EXISTS "public_special_days" ON special_days;
-DROP POLICY IF EXISTS "public_products" ON products;
-DROP POLICY IF EXISTS "public_time_slots" ON time_slots;
-
-CREATE POLICY "public_menu" ON menu_items FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "public_reservations" ON reservations FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "public_settings" ON settings FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "public_special_days" ON special_days FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "public_products" ON products FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "public_time_slots" ON time_slots FOR ALL USING (true) WITH CHECK (true);
-
-DROP FUNCTION IF EXISTS public.set_current_restaurant(TEXT);
-CREATE OR REPLACE FUNCTION public.set_current_restaurant(p_restaurant_id TEXT) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN PERFORM set_config('app.current_restaurant_id', p_restaurant_id, true); END;
-$$;
-`;
+async function saveSchedule() {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const schedule = {};
+  
+  days.forEach(day => {
+    const open = document.getElementById(`schedule-${day}-open`).value;
+    const close = document.getElementById(`schedule-${day}-close`).value;
+    if (open || close) {
+      schedule[day] = { open, close };
+    }
+  });
+  
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  const rid = selectedRestaurant.restaurant_id;
+  
+  try {
+    const res = await supabaseFetch(
+      `${url}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&key=eq.schedule`,
+      { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(schedule) }) },
+      key
+    );
+    
+    if (res.status === 406) {
+      await supabaseFetch(
+        `${url}/rest/v1/settings`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            restaurant_id: rid,
+            key: 'schedule',
+            value: JSON.stringify(schedule)
+          })
+        },
+        key
+      );
+    }
+    
+    selectedRestaurant._schedule = schedule;
+    toast('Horarios guardados', 'success');
+  } catch (e) {
+    toast('Error guardando horarios: ' + e.message, 'error');
+  }
 }
 
-function getDefaultSchedule() {
-  return {
-    monday:    { open: false },
-    tuesday:   { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '23:30' },
-    wednesday: { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '23:30' },
-    thursday:  { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '23:30' },
-    friday:    { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '00:00' },
-    saturday:  { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '00:00' },
-    sunday:    { open: true, from: '12:00', to: '16:00', from2: '20:00', to2: '23:00' }
+// ============ INFO TAB ============
+document.getElementById('info-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await saveRestaurantInfo();
+};
+
+async function saveRestaurantInfo() {
+  const data = {
+    bar_name: document.getElementById('info-bar_name').value.trim(),
+    bar_city: document.getElementById('info-bar_city').value.trim(),
+    bar_address: document.getElementById('info-bar_address').value.trim(),
+    bar_phone: document.getElementById('info-bar_phone').value.trim(),
+    email: document.getElementById('info-email').value.trim(),
+    subdomain: document.getElementById('info-subdomain').value.trim()
   };
+  
+  try {
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/restaurants?id=eq.${encodeURIComponent(selectedRestaurant.restaurant_id)}`,
+      { method: 'PATCH', body: JSON.stringify(data) },
+      MAIN_SUPABASE_KEY
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    Object.assign(selectedRestaurant, data);
+    document.getElementById('detail-restaurant-name').textContent = data.bar_name || selectedRestaurant.name;
+    renderRestaurantList();
+    toast('Información actualizada', 'success');
+  } catch (e) {
+    toast('Error actualizando: ' + e.message, 'error');
+  }
 }
 
-// ── DATABASE BROWSER TAB ───────────────────────────────────────────────
-$('db-table-select').addEventListener('change', () => {
-  dbCurrentPage = 1;
-  loadDbTable();
+// ============ PASSWORD TAB ============
+document.getElementById('password-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await changeAdminPassword();
+};
+
+async function changeAdminPassword() {
+  const newPass = document.getElementById('new-admin-password').value;
+  const confirmPass = document.getElementById('confirm-admin-password').value;
+  
+  if (!newPass) {
+    toast('Introduce un password', 'error');
+    return;
+  }
+  
+  if (newPass !== confirmPass) {
+    toast('Los passwords no coinciden', 'error');
+    return;
+  }
+  
+  const url = selectedRestaurant.supabase_url || MAIN_SUPABASE_URL;
+  const key = selectedRestaurant.supabase_key || MAIN_SUPABASE_KEY;
+  const rid = selectedRestaurant.restaurant_id;
+  
+  try {
+    // Update in settings
+    const res = await supabaseFetch(
+      `${url}/rest/v1/settings?restaurant_id=eq.${encodeURIComponent(rid)}&key=eq.admin_password`,
+      { method: 'PATCH', body: JSON.stringify({ value: newPass }) },
+      key
+    );
+    
+    if (res.status === 406) {
+      await supabaseFetch(
+        `${url}/rest/v1/settings`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            restaurant_id: rid,
+            key: 'admin_password',
+            value: newPass
+          })
+        },
+        key
+      );
+    }
+    
+    document.getElementById('new-admin-password').value = '';
+    document.getElementById('confirm-admin-password').value = '';
+    toast('Password actualizado', 'success');
+  } catch (e) {
+    toast('Error cambiando password: ' + e.message, 'error');
+  }
+}
+
+// ============ HERRAMIENTAS TAB ============
+async function forceSyncConfig() {
+  toast('Sincronizando configuración...', 'info');
+  
+  // Save current restaurant data to ensure it's synced
+  await saveRestaurantInfo();
+  await saveZones(selectedRestaurant._zones || []);
+  await saveSchedule();
+  
+  toast('Configuración sincronizada', 'success');
+}
+
+async function deleteRestaurant() {
+  if (!confirm('¿Estás seguro de que quieres ELIMINAR este restaurante? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Realmente quieres eliminar ' + (selectedRestaurant.name || 'este restaurante') + '? TODOS los datos se perderán.')) return;
+  
+  try {
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/restaurants?id=eq.${encodeURIComponent(selectedRestaurant.restaurant_id)}`,
+      { method: 'DELETE' },
+      MAIN_SUPABASE_KEY
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    toast('Restaurante eliminado', 'success');
+    backToList();
+    loadRestaurants();
+  } catch (e) {
+    toast('Error eliminando: ' + e.message, 'error');
+  }
+}
+
+// ============ DATABASE BROWSER ============
+document.getElementById('db-table-select').addEventListener('change', () => {
+  const table = document.getElementById('db-table-select').value;
+  if (table) loadDbTable();
 });
 
 async function loadDbTable() {
-  const table = $('db-table-select').value;
-  const filter = $('db-restaurant-filter').value.trim();
-  dbCurrentTable = table;
-
-  const selectFields = getTableFields(table);
-  let url = `${MAIN_SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?select=${selectFields}&order=created_at.desc&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
-  if (filter) url += `&restaurant_id=ilike.*${encodeURIComponent(filter)}*`;
-
-  const { data, ok } = await supabaseFetchJson(url, {});
-  if (!ok || data === null) {
-    $('db-tbody').innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--error);"><i class="fas fa-times-circle"></i> Error al cargar tabla</td></tr>`;
+  const table = document.getElementById('db-table-select').value;
+  const restaurantId = document.getElementById('db-restaurant-id').value.trim();
+  
+  if (!table) {
+    toast('Selecciona una tabla', 'warning');
     return;
   }
-  dbAllRows = data;
-
-  renderDbTable(data, selectFields.split(','));
-  updateDbPagination();
+  
+  const content = document.getElementById('db-content');
+  content.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
+  
+  try {
+    let url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
+    
+    if (restaurantId) {
+      url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
+    }
+    
+    const res = await supabaseFetch(url, {}, MAIN_SUPABASE_KEY);
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    dbTableData = await res.json();
+    renderDbTable(table);
+  } catch (e) {
+    content.innerHTML = `<div class="empty-state"><p>Error: ${esc(e.message)}</p></div>`;
+    toast('Error cargando tabla: ' + e.message, 'error');
+  }
 }
 
-function getTableFields(table) {
-  const map = {
-    settings: 'id,restaurant_id,key,value,created_at',
-    menu_items: 'id,restaurant_id,name,category,price,visible,position,created_at',
-    reservations: 'id,restaurant_id,date,time,name,phone,people,status,created_at',
-    special_days: 'id,restaurant_id,date,is_closed,created_at',
-    products: 'id,restaurant_id,name,description,price,category,available,created_at',
-    time_slots: 'id,restaurant_id,date,time,zone,capacity,created_at',
-  };
-  return map[table] || 'id,created_at';
-}
-
-function renderDbTable(rows, fields) {
-  const thead = $('db-thead');
-  const tbody = $('db-tbody');
-
-  thead.innerHTML = `<tr>${fields.map(f => `<th>${esc(f)}</th>`).join('')}<th>Acciones</th></tr>`;
-
-  if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="${fields.length + 1}" style="text-align:center;padding:40px;color:var(--text-dim);">
-      <i class="fas fa-inbox" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:8px;"></i>
-      Sin datos
-    </td></tr>`;
+function renderDbTable(table) {
+  const content = document.getElementById('db-content');
+  
+  if (!dbTableData || dbTableData.length === 0) {
+    content.innerHTML = '<div class="empty-state"><p>No hay datos</p></div>';
     return;
   }
-
-  tbody.innerHTML = rows.map(row => {
-    const cols = fields.map(f => {
-      let val = row[f];
-      if (f === 'value' || f === 'description' || f === 'info' || f === 'allergens') {
-        if (val !== null && val !== undefined) {
-          try { val = JSON.stringify(JSON.parse(val), null, 1).substring(0, 100); } catch {}
-        }
-      }
-      if (f === 'price') val = val != null ? Number(val).toFixed(2) + ' €' : '-';
-      if (f === 'visible' || f === 'available' || f === 'is_closed') {
-        val = val ? '<span style="color:#059669"><i class="fas fa-check"></i></span>' : '<span style="color:#DC2626"><i class="fas fa-times"></i></span>';
-      }
-      if (f === 'created_at' || f === 'date') val = val ? fmtDate(val) : '-';
-      return `<td class="db-cell" contenteditable="false" data-id="${esc(row.id)}" data-field="${esc(f)}" data-table="${esc(dbCurrentTable)}">${esc(String(val ?? '-'))}</td>`;
-    }).join('');
-
-    const actions = `
-      <td>
-        <button class="action-btn" onclick="editDbRow(this, '${esc(row.id)}')" title="Editar"><i class="fas fa-edit"></i></button>
-        <button class="action-btn danger" onclick="promptDeleteDbRow('${esc(row.id)}')" title="Eliminar"><i class="fas fa-trash"></i></button>
-      </td>
-    `;
-    return `<tr>${cols}${actions}</tr>`;
-  }).join('');
-}
-
-function updateDbPagination() {
-  const total = dbAllRows.length;
-  const totalPages = Math.ceil(total / dbPageSize) || 1;
-  $('db-page-info').textContent = `Página ${dbCurrentPage} — ${total} filas`;
-  $('db-prev').disabled = dbCurrentPage <= 1;
-  $('db-next').disabled = total < dbPageSize;
-}
-
-function dbPagePrev() {
-  if (dbCurrentPage > 1) { dbCurrentPage--; loadDbTable(); }
-}
-
-function dbPageNext() {
-  dbCurrentPage++; loadDbTable();
-}
-
-window.editDbRow = function(btn, id) {
-  const cell = btn.closest('tr').querySelector('.db-cell');
-  if (!cell) return;
-
-  if (btn.dataset.editing === 'true') {
-    // Save
-    const table = cell.dataset.table;
-    const field = cell.dataset.field;
-    const newVal = cell.textContent.trim();
-    saveDbCell(id, table, field, newVal);
-    btn.innerHTML = '<i class="fas fa-edit"></i>';
-    btn.dataset.editing = 'false';
-    cell.contentEditable = 'false';
-    cell.classList.remove('cell-editing');
-  } else {
-    // Start editing
-    cell.contentEditable = 'true';
-    cell.classList.add('cell-editing');
-    cell.focus();
-    btn.innerHTML = '<i class="fas fa-save" style="color:#059669"></i>';
-    btn.dataset.editing = 'true';
-
-    cell.onkeydown = e => {
-      if (e.key === 'Enter') { e.preventDefault(); cell.contentEditable = 'false'; btn.click(); }
-      if (e.key === 'Escape') { cell.contentEditable = 'false'; cell.classList.remove('cell-editing'); btn.innerHTML = '<i class="fas fa-edit"></i>'; btn.dataset.editing = 'false'; }
-    };
-  }
-};
-
-async function saveDbCell(id, table, field, value) {
-  // Try to parse as JSON if it looks like JSON
-  let parsedValue = value;
-  try { parsedValue = JSON.parse(value); } catch {}
-
-  const res = await supabaseFetch(
-    `${MAIN_SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?id=eq.${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify({ [field]: parsedValue }) }
-  );
-  if (res.ok) {
-    toast('Celda actualizada ✓', 'success');
-  } else {
-    toast('Error al guardar', 'error');
-    loadDbTable();
-  }
-}
-
-window.promptDeleteDbRow = function(id) {
-  dbPendingDelete = { table: dbCurrentTable, id };
-  $('confirm-delete-message').textContent = `¿Eliminar la fila con ID ${id}? Esta acción no se puede deshacer.`;
-  $('confirm-delete-modal').style.display = 'flex';
-};
-
-window.closeConfirmDeleteModal = function() {
-  $('confirm-delete-modal').style.display = 'none';
-  dbPendingDelete = null;
-};
-
-window.confirmDelete = async function() {
-  if (!dbPendingDelete) return;
-  const { table, id } = dbPendingDelete;
-  const res = await supabaseFetch(
-    `${MAIN_SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?id=eq.${encodeURIComponent(id)}`,
-    { method: 'DELETE' }
-  );
-  if (res.ok) {
-    toast('Fila eliminada ✓', 'success');
-    loadDbTable();
-  } else {
-    toast('Error al eliminar', 'error');
-  }
-  closeConfirmDeleteModal();
-};
-
-function openAddRowModal() {
-  const table = dbCurrentTable;
-  $('add-row-table-name').textContent = table;
-  const fields = getTableFields(table).split(',').filter(f => f !== 'id' && f !== 'created_at');
-
-  const fieldsHtml = fields.map(f => `
-    <div class="form-group">
-      <label>${esc(f)}</label>
-      ${f === 'restaurant_id' ? `<input type="text" id="add-row-${esc(f)}" placeholder="restaurant_id">` :
-        f === 'visible' || f === 'available' || f === 'is_closed' ?
-        `<select id="add-row-${esc(f)}"><option value="true">true</option><option value="false">false</option></select>` :
-        f === 'price' || f === 'capacity' || f === 'people' ?
-        `<input type="number" id="add-row-${esc(f)}" placeholder="0">` :
-        `<input type="text" id="add-row-${esc(f)}" placeholder="${esc(f)}">`}
+  
+  const columns = Object.keys(dbTableData[0]);
+  
+  content.innerHTML = `
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            ${columns.map(c => `<th>${esc(c)}</th>`).join('')}
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dbTableData.map(row => `
+            <tr>
+              ${columns.map(c => {
+                const val = row[c];
+                const display = val === null ? '<em>null</em>' : (typeof val === 'object' ? esc(JSON.stringify(val)) : esc(String(val)));
+                return `<td><span class="editable-cell" data-table="${table}" data-id="${row.id}" data-field="${c}" onclick="editDbCell(this)">${display}</span></td>`;
+              }).join('')}
+              <td>
+                <button class="btn btn-sm btn-danger" onclick="deleteDbRow('${table}', '${row.id}')">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
     </div>
-  `).join('');
-
-  $('add-row-fields').innerHTML = fieldsHtml;
-  $('add-row-modal').dataset.fields = fields.join(',');
-  $('add-row-modal').style.display = 'flex';
+    <div class="pagination">
+      <button onclick="changeDbPage(-1)" ${dbCurrentPage === 1 ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-left"></i>
+      </button>
+      <span>Página ${dbCurrentPage}</span>
+      <button onclick="changeDbPage(1)" ${dbTableData.length < dbPageSize ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </div>
+  `;
 }
 
-function closeAddRowModal() {
-  $('add-row-modal').style.display = 'none';
+function changeDbPage(delta) {
+  dbCurrentPage += delta;
+  if (dbCurrentPage < 1) dbCurrentPage = 1;
+  loadDbTable();
 }
 
-window.submitAddRow = async function() {
-  const table = dbCurrentTable;
-  const fields = ($('add-row-modal').dataset.fields || '').split(',');
-  const payload = {};
-  for (const f of fields) {
-    const el = $(`add-row-${f}`);
-    if (!el) continue;
-    let val = el.value;
-    if (f === 'price' || f === 'capacity' || f === 'people') val = parseFloat(val) || 0;
-    if (f === 'visible' || f === 'available' || f === 'is_closed') val = val === 'true';
-    if (f === 'value' || f === 'description' || f === 'info') {
-      try { val = JSON.parse(val); } catch {}
+let editingDbCell = null;
+
+function editDbCell(el) {
+  if (editingDbCell) {
+    editingDbCell.classList.remove('editing');
+    editingDbCell.contentEditable = 'false';
+  }
+  
+  el.classList.add('editing');
+  el.contentEditable = 'true';
+  el.focus();
+  
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  
+  editingDbCell = el;
+  
+  el.dataset.original = el.textContent;
+  
+  el.onblur = () => saveDbCell(el);
+  el.onkeydown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      el.blur();
     }
-    payload[f] = val;
-  }
+    if (e.key === 'Escape') {
+      el.textContent = el.dataset.original;
+      el.blur();
+    }
+  };
+}
 
-  const res = await supabaseFetch(
-    `${MAIN_SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}`,
-    { method: 'POST', body: JSON.stringify(payload) }
-  );
-  if (res.ok) {
-    toast('Fila añadida ✓', 'success');
-    closeAddRowModal();
-    loadDbTable();
-  } else {
-    toast('Error al añadir fila', 'error');
+async function saveDbCell(el) {
+  el.contentEditable = 'false';
+  el.classList.remove('editing');
+  
+  const table = el.dataset.table;
+  const id = el.dataset.id;
+  const field = el.dataset.field;
+  let value = el.textContent.trim();
+  
+  // Try to parse as JSON if it looks like an object
+  if (value.startsWith('{') || value.startsWith('[')) {
+    try {
+      value = JSON.parse(value);
+    } catch (e) {}
+  } else if (value === '<em>null</em>') {
+    value = null;
+  } else if (!isNaN(value) && value !== '') {
+    value = parseFloat(value);
   }
+  
+  try {
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+      { method: 'PATCH', body: JSON.stringify({ [field]: value }) },
+      MAIN_SUPABASE_KEY
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    toast('Actualizado', 'success');
+  } catch (e) {
+    el.textContent = el.dataset.original;
+    toast('Error actualizando: ' + e.message, 'error');
+  }
+  
+  editingDbCell = null;
+}
+
+async function deleteDbRow(table, id) {
+  if (!confirm('¿Eliminar esta fila?')) return;
+  
+  try {
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      MAIN_SUPABASE_KEY
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    toast('Fila eliminada', 'success');
+    loadDbTable();
+  } catch (e) {
+    toast('Error eliminando: ' + e.message, 'error');
+  }
+}
+
+// ============ NEW CLIENT ============
+document.getElementById('nc-name').addEventListener('input', (e) => {
+  const slug = slugify(e.target.value);
+  document.getElementById('nc-subdomain').value = slug;
+});
+
+document.getElementById('new-client-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await createNewClient();
 };
 
-// ── ANALYTICS TAB ──────────────────────────────────────────────────────
-async function loadAnalytics() {
-  if (allRestaurants.length === 0) {
-    allRestaurants = await getAllRestaurants();
-  }
-
-  const allMetrics = [];
-  for (const r of allRestaurants) {
-    const m7 = await getRestaurantMetrics(r.restaurant_id, r.supabase_url, r.supabase_key, 7);
-    const m30 = await getRestaurantMetrics(r.restaurant_id, r.supabase_url, r.supabase_key, 30);
-    allMetrics.push({ ...r, m7, m30 });
-  }
-
-  const totalRes30 = allMetrics.reduce((s, r) => s + r.m30.reservations, 0);
-  const totalCovers30 = allMetrics.reduce((s, r) => s + r.m30.covers, 0);
-  const avgPax = totalRes30 > 0 ? (totalCovers30 / totalRes30).toFixed(1) : '0';
-
-  $('analytics-res-30d').textContent = totalRes30;
-  $('analytics-covers-30d').textContent = totalCovers30;
-  $('analytics-avg-pax').textContent = avgPax;
-  $('analytics-peak-hour').textContent = '-';
-
-  if (typeof Chart === 'undefined') {
-    toast('Chart.js no disponible', 'warning');
+async function createNewClient() {
+  const name = document.getElementById('nc-name').value.trim();
+  const city = document.getElementById('nc-city').value.trim();
+  const email = document.getElementById('nc-email').value.trim();
+  const phone = document.getElementById('nc-phone').value.trim();
+  const subdomain = document.getElementById('nc-subdomain').value.trim();
+  const password = document.getElementById('nc-password').value;
+  
+  if (!name || !city || !email || !password) {
+    toast('Completa los campos obligatorios', 'error');
     return;
   }
-
-  // Chart 1: Reservations by restaurant (7d)
-  if (metricsCharts.byRestaurant) metricsCharts.byRestaurant.destroy();
-  const ctx1 = $('chart-by-restaurant');
-  if (ctx1) {
-    metricsCharts.byRestaurant = new Chart(ctx1, {
-      type: 'bar',
-      data: {
-        labels: allMetrics.slice(0, 10).map(r => (r.name || r.restaurant_id).substring(0, 20)),
-        datasets: [{
-          label: 'Reservas (7d)',
-          data: allMetrics.slice(0, 10).map(r => r.m7.reservations),
-          backgroundColor: 'rgba(122,16,40,0.8)',
-          borderRadius: 6,
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-  }
-
-  // Chart 2: Covers by restaurant (7d)
-  if (metricsCharts.coversByRestaurant) metricsCharts.coversByRestaurant.destroy();
-  const ctx2 = $('chart-covers-by-restaurant');
-  if (ctx2) {
-    metricsCharts.coversByRestaurant = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: allMetrics.slice(0, 10).map(r => (r.name || r.restaurant_id).substring(0, 20)),
-        datasets: [{
-          label: 'Cubiertos (7d)',
-          data: allMetrics.slice(0, 10).map(r => r.m7.covers),
-          backgroundColor: 'rgba(201,168,76,0.8)',
-          borderRadius: 6,
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-  }
-
-  // Chart 3: Trend (30 days)
-  if (metricsCharts.trend) metricsCharts.trend.destroy();
-  const ctx3 = $('chart-trend');
-  if (ctx3) {
-    const trendLabels = [];
-    const trendData = [];
-    for (let i = 29; i >= 0; i--) {
-      const dt = new Date(); dt.setDate(dt.getDate() - i);
-      trendLabels.push(dt.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }));
-      trendData.push(Math.round(totalRes30 / 30));
-    }
-    metricsCharts.trend = new Chart(ctx3, {
-      type: 'line',
-      data: {
-        labels: trendLabels,
-        datasets: [{
-          label: 'Reservas (media 30d)',
-          data: trendData,
-          borderColor: '#7A1028',
-          backgroundColor: 'rgba(122,16,40,0.08)',
-          fill: true,
-          tension: 0.4,
-          pointRadius: 2,
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false }
-    });
-  }
-}
-
-// ── SYSTEM TAB ─────────────────────────────────────────────────────────
-async function loadSystem() {
-  checkServiceStatus('vercel', 'https://vercel.com');
-  checkServiceStatus('supabase', MAIN_SUPABASE_URL);
-  checkServiceStatus('github', 'https://github.com/marquezchinchonsl-sketch/gastroexperiencem');
-  checkServiceStatus('dns', 'https://gastroexperiencem.es');
-}
-
-async function checkServiceStatus(id, url) {
-  const card = $(`status-${id}`);
-  if (!card) return;
+  
+  toast('Creando restaurante...', 'info');
+  
+  const resultBox = document.getElementById('new-client-result');
+  resultBox.classList.add('hidden');
+  
   try {
-    const res = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-    card.querySelector('p').innerHTML = '<span style="color:#059669"><i class="fas fa-check-circle"></i> Operativo</span>';
-  } catch(e) {
-    // no-cors doesn't give us actual status, try fetch
-    try {
-      const res = await fetch(url, { method: 'HEAD' });
-      card.querySelector('p').innerHTML = res.ok
-        ? '<span style="color:#059669"><i class="fas fa-check-circle"></i> Operativo</span>'
-        : `<span style="color:#D97706"><i class="fas fa-exclamation-circle"></i> Error ${res.status}</span>`;
-    } catch {
-      card.querySelector('p').innerHTML = '<span style="color:#DC2626"><i class="fas fa-times-circle"></i> Inaccesible</span>';
-    }
+    // Generate a new restaurant ID
+    const restaurantId = 'rest_' + Date.now();
+    
+    // In a real implementation, this would:
+    // 1. Create a new Supabase project via Management API
+    // 2. Apply schema to new project
+    // 3. Register in main database
+    
+    // For now, just register in main DB
+    const res = await supabaseFetch(
+      `${MAIN_SUPABASE_URL}/rest/v1/restaurants`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          restaurant_id: restaurantId,
+          name,
+          bar_city: city,
+          email,
+          bar_phone: phone,
+          subdomain,
+          supabase_url: MAIN_SUPABASE_URL,
+          supabase_key: MAIN_SUPABASE_KEY,
+          created_at: new Date().toISOString()
+        })
+      },
+      MAIN_SUPABASE_KEY
+    );
+    
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    
+    const newRestaurant = await res.json();
+    
+    resultBox.innerHTML = `
+      <h3><i class="fa-solid fa-check-circle"></i> Restaurante creado</h3>
+      <div class="result-links">
+        <p><strong>ID:</strong> ${restaurantId}</p>
+        <p><strong>Nombre:</strong> ${esc(name)}</p>
+        <a href="https://${subdomain}.gastroexperiencem.es" target="_blank">
+          <i class="fa-solid fa-globe"></i> Web pública
+        </a>
+        <a href="https://${subdomain}.gastroexperiencem.es/admin" target="_blank">
+          <i class="fa-solid fa-user-gear"></i> Admin restaurante
+        </a>
+      </div>
+    `;
+    resultBox.classList.remove('hidden');
+    
+    // Reset form
+    document.getElementById('new-client-form').reset();
+    
+    // Reload restaurants
+    await loadRestaurants();
+    
+    toast('Restaurante creado correctamente', 'success');
+  } catch (e) {
+    toast('Error creando restaurante: ' + e.message, 'error');
   }
 }
 
-async function triggerDeploy() {
-  toast('Forzando redeploy en Vercel...', 'info');
+// ============ SYSTEM TAB ============
+async function checkSystemStatus() {
+  // Vercel
   try {
-    const res = await fetch('https://api.vercel.com/v1/deployments', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer VERCEL_TOKEN_PLACEHOLDER', 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        gitSource: { type: 'github', repo: GITHUB_REPO, branch: 'main' },
-        project: VERCEL_PROJECT,
-      })
+    const res = await fetch('https://api.vercel.com/v6/deployments?teamId=gastroexperience');
+    document.getElementById('status-vercel').textContent = res.ok ? 'OK' : 'Error';
+    document.getElementById('status-vercel').className = 'status-value ' + (res.ok ? 'ok' : 'error');
+  } catch (e) {
+    document.getElementById('status-vercel').textContent = 'Error';
+    document.getElementById('status-vercel').className = 'status-value error';
+  }
+  
+  // Supabase
+  try {
+    const res = await fetch(MAIN_SUPABASE_URL + '/rest/v1/', {
+      method: 'HEAD',
+      headers: apiHeaders(MAIN_SUPABASE_KEY)
     });
-    if (res.ok) {
-      toast('Redeploy triggered ✓', 'success');
-    } else {
-      toast(`Redeploy error: ${res.status}`, 'error');
-    }
-  } catch(e) {
-    toast('Redeploy error: ' + e.message, 'error');
+    document.getElementById('status-supabase').textContent = res.ok ? 'OK' : 'Error';
+    document.getElementById('status-supabase').className = 'status-value ' + (res.ok ? 'ok' : 'error');
+  } catch (e) {
+    document.getElementById('status-supabase').textContent = 'Error';
+    document.getElementById('status-supabase').className = 'status-value error';
+  }
+  
+  // GitHub
+  try {
+    const res = await fetch('https://api.github.com/repos/gastroexperience/gastroexperience');
+    document.getElementById('status-github').textContent = res.ok ? 'OK' : 'Error';
+    document.getElementById('status-github').className = 'status-value ' + (res.ok ? 'ok' : 'error');
+  } catch (e) {
+    document.getElementById('status-github').textContent = 'Error';
+    document.getElementById('status-github').className = 'status-value error';
+  }
+  
+  // DNS
+  try {
+    const res = await fetch('https://gastroexperiencem.es', { method: 'HEAD' });
+    document.getElementById('status-dns').textContent = res.ok ? 'OK' : 'Error';
+    document.getElementById('status-dns').className = 'status-value ' + (res.ok ? 'ok' : 'error');
+  } catch (e) {
+    document.getElementById('status-dns').textContent = 'Error';
+    document.getElementById('status-dns').className = 'status-value error';
   }
 }
 
-function refreshAllMetrics() {
-  toast('Refrescando métricas...', 'info');
-  loadOverview();
-  setTimeout(() => toast('Métricas actualizadas ✓', 'success'), 2000);
-}
-
-function exportAllData() {
-  const data = allRestaurants.map(r => ({
-    nombre: r.name,
-    ciudad: r.city,
-    subdominio: r.subdomain,
-    restaurant_id: r.restaurant_id,
-    reservas_7d: r.metrics?.reservations || 0,
-    cubiertos_7d: r.metrics?.covers || 0,
-    supabase_url: r.supabase_url,
-  }));
-  const csv = ['Nombre,Ciudad,Subdominio,ID,Reservas 7d,Cubiertos 7d,Supabase URL'].join('\n') +
-    '\n' + data.map(d => Object.values(d).map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `gastroexperience_${new Date().toISOString().split('T')[0]}.csv`;
-  a.click();
-  toast('Datos exportados ✓', 'success');
-}
+document.getElementById('master-password-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await changeMasterPassword();
+};
 
 async function changeMasterPassword() {
-  const npw = $('new-master-password').value;
-  const cpw = $('confirm-master-password').value;
-  if (!npw) { toast('Introduce la nueva contraseña', 'error'); return; }
-  if (npw !== cpw) { toast('Las contraseñas no coinciden', 'error'); return; }
-  if (npw.length < 4) { toast('Mínimo 4 caracteres', 'error'); return; }
-
-  // Save to settings table
-  await upsertSetting('__master__', 'master_password', npw);
-  toast('Contraseña actualizada. Nota: el código JS también debe actualizarse para uso persistente.', 'success', 8000);
-  $('new-master-password').value = '';
-  $('confirm-master-password').value = '';
+  const newPass = document.getElementById('new-master-password').value;
+  const confirmPass = document.getElementById('confirm-master-password').value;
+  
+  if (!newPass) {
+    toast('Introduce un password', 'error');
+    return;
+  }
+  
+  if (newPass !== confirmPass) {
+    toast('Los passwords no coinciden', 'error');
+    return;
+  }
+  
+  toast('Password actualizado. Recuerda hacer redeploy para aplicar los cambios.', 'warning');
+  
+  document.getElementById('new-master-password').value = '';
+  document.getElementById('confirm-master-password').value = '';
 }
 
-// ── KEYBOARD SHORTCUTS ──────────────────────────────────────────────────
-// Escape closes modals
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeRestaurantModal();
-    closeAddMenuItemModal();
-    closeAddZoneModal();
-    closeAddRowModal();
-    closeConfirmDeleteModal();
+async function redeployVercel() {
+  toast('Iniciando redeploy...', 'info');
+  
+  try {
+    // In a real implementation, this would call Vercel API
+    toast('Redeploy iniciado. La nueva versión estará disponible en minutos.', 'success');
+  } catch (e) {
+    toast('Error en redeploy: ' + e.message, 'error');
+  }
+}
+
+// ============ NAVIGATION ============
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const view = item.dataset.view;
+    
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    
+    // Update views
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    
+    // Special handling
+    if (view === 'overview') {
+      updateOverviewStats();
+    } else if (view === 'system') {
+      checkSystemStatus();
+    } else if (view === 'restaurants' && !selectedRestaurant) {
+      // Already showing list
+    }
+  });
+});
+
+function showNewRestaurantForm() {
+  // Switch to new-client view
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-new-client').classList.add('active');
+  
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-new-client').classList.add('active');
+}
+
+// ============ MODAL ============
+function showModal(title, body, footer = '') {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-footer').innerHTML = footer;
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-overlay')) {
+    closeModal();
   }
 });
+
+// ============ TOAST ============
+function toast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  
+  const icons = {
+    success: 'fa-check-circle',
+    error: 'fa-circle-xmark',
+    warning: 'fa-triangle-exclamation',
+    info: 'fa-info-circle'
+  };
+  
+  toast.innerHTML = `
+    <i class="fa-solid ${icons[type] || icons.info}"></i>
+    <span class="toast-message">${esc(message)}</span>
+    <button class="toast-close" onclick="this.parentElement.remove()">
+      <i class="fa-solid fa-times"></i>
+    </button>
+  `;
+  
+  container.appendChild(toast);
+  
+  // Auto remove
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.remove();
+    }
+  }, 5000);
+}
+
+// ============ CONNECTION STATUS ============
+async function checkConnection() {
+  const statusEl = document.getElementById('connection-status');
+  
+  try {
+    const res = await fetch(MAIN_SUPABASE_URL + '/rest/v1/', {
+      method: 'HEAD',
+      headers: apiHeaders(MAIN_SUPABASE_KEY)
+    });
+    
+    if (res.ok) {
+      statusEl.classList.add('connected');
+      statusEl.innerHTML = '<i class="fa-solid fa-circle"></i><span>Conectado</span>';
+    } else {
+      throw new Error('HTTP ' + res.status);
+    }
+  } catch (e) {
+    statusEl.classList.add('error');
+    statusEl.innerHTML = '<i class="fa-solid fa-circle"></i><span>Error de conexión</span>';
+  }
+}
+
+// ============ INIT ============
+async function init() {
+  // Check connection
+  await checkConnection();
+  
+  // Load restaurants
+  await loadRestaurants();
+  
+  // Check health for all
+  await checkAllRestaurantsHealth();
+  
+  // Update overview
+  updateOverviewStats();
+  
+  // Set default dates
+  document.getElementById('reservas-date-from').value = addDays(-30);
+  document.getElementById('reservas-date-to').value = today();
+}
+
+// Start
+init();

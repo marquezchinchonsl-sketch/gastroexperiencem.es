@@ -4,714 +4,555 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GastroExperience — Master Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="master-admin.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
 </head>
 <body>
-
-<!-- ═══════════════════════════════════════════════════════════
-     LOGIN OVERLAY
-═══════════════════════════════════════════════════════════ -->
-<div id="login-overlay">
-  <div class="login-card">
-    <div class="login-logo">
-      <span class="logo-icon">🍽️</span>
-      <h2>Master Admin</h2>
-      <p>Acceso restringido — GastroExperience SaaS</p>
-    </div>
-    <div class="login-fields">
-      <input type="password" id="master-password" placeholder="Contraseña Maestra" autocomplete="current-password">
-      <button id="login-btn"><i class="fas fa-fingerprint"></i> Acceder</button>
-    </div>
-    <p id="login-error" class="login-error"></p>
-    <div class="login-footer">
-      <small>Solo para administradores del sistema</small>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     MAIN APP LAYOUT
-═══════════════════════════════════════════════════════════ -->
-<div class="app-layout" id="app" style="display:none;">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo-area">
-        <span class="logo-icon">🍽️</span>
-        <div>
-          <h1>Master Admin</h1>
-          <p>GastroExperience</p>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <i class="fa-solid fa-crown"></i>
+          <span>Master Admin</span>
+        </div>
+        <div class="user-info">
+          <span>Administrador</span>
         </div>
       </div>
-    </div>
-
-    <nav class="admin-nav">
-      <button class="nav-tab active" data-tab="overview"><i class="fas fa-globe"></i> Vista General</button>
-      <button class="nav-tab" data-tab="restaurants"><i class="fas fa-store"></i> Restaurantes</button>
-      <button class="nav-tab" data-tab="create"><i class="fas fa-plus-circle"></i> Nuevo Cliente</button>
-      <button class="nav-tab" data-tab="database"><i class="fas fa-database"></i> Base de Datos</button>
-      <button class="nav-tab" data-tab="analytics"><i class="fas fa-chart-pie"></i> Analytics</button>
-      <button class="nav-tab" data-tab="system"><i class="fas fa-server"></i> Sistema</button>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="system-status">
-        <span class="status-dot online"></span>
-        <span id="system-status-text">Sistema operativo</span>
-      </div>
-      <a href="admin.html" class="back-link" target="_blank"><i class="fas fa-user-shield"></i> Admin Restaurante</a>
-    </div>
-  </aside>
-
-  <!-- MAIN CONTENT -->
-  <div class="main-wrapper">
-    <header class="topbar">
-      <div class="topbar-title" id="admin-title">Panel de Control — GastroExperience</div>
-      <div class="user-info">
-        <span>Super Administrador</span>
-        <div class="avatar"><i class="fas fa-crown"></i></div>
-      </div>
-    </header>
-
-    <main class="dashboard-container">
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: OVERVIEW
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-overview" class="tab-content active-tab">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-globe"></i> Estado del SaaS</h2>
-            <p>Resumen global de todos los restaurantes activos</p>
-          </div>
-          <button class="btn-primary" onclick="openTab('create')"><i class="fas fa-plus"></i> Nuevo Cliente</button>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-item" data-view="overview" id="nav-overview">
+          <i class="fa-solid fa-chart-pie"></i>
+          <span>Resumen General</span>
+        </button>
+        <button class="nav-item" data-view="restaurants" id="nav-restaurants">
+          <i class="fa-solid fa-utensils"></i>
+          <span>Restaurantes</span>
+        </button>
+        <button class="nav-item" data-view="database" id="nav-database">
+          <i class="fa-solid fa-database"></i>
+          <span>Explorador BD</span>
+        </button>
+        <button class="nav-item" data-view="new-client" id="nav-new-client">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>Nuevo Cliente</span>
+        </button>
+        <button class="nav-item" data-view="system" id="nav-system">
+          <i class="fa-solid fa-gear"></i>
+          <span>Sistema</span>
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="connection-status" id="connection-status">
+          <i class="fa-solid fa-circle"></i>
+          <span>Conectando...</span>
         </div>
-
-        <div class="stats-grid" id="overview-stats">
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main id="main-content">
+      <!-- Overview View -->
+      <section id="view-overview" class="view active">
+        <div class="view-header">
+          <h1>Resumen General</h1>
+          <p>Panel de control de GastroExperience</p>
+        </div>
+        
+        <div class="stats-row" id="overview-stats">
           <div class="stat-card">
-            <h3><i class="fas fa-store"></i> Restaurantes Totales</h3>
-            <p class="stat-number" id="total-restaurants">-</p>
+            <div class="stat-icon"><i class="fa-solid fa-utensils"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-total-restaurants">—</span>
+              <span class="stat-label">Restaurantes</span>
+            </div>
           </div>
           <div class="stat-card">
-            <h3><i class="fas fa-calendar-check"></i> Reservas Hoy</h3>
-            <p class="stat-number" id="reservations-today">-</p>
+            <div class="stat-icon"><i class="fa-solid fa-calendar-check"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-reservations-today">—</span>
+              <span class="stat-label">Reservas hoy</span>
+            </div>
           </div>
           <div class="stat-card">
-            <h3><i class="fas fa-users"></i> Cubiertos Hoy</h3>
-            <p class="stat-number" id="covers-today">-</p>
-          </div>
-          <div class="stat-card">
-            <h3><i class="fas fa-fire"></i> Tasa Confirmación</h3>
-            <p class="stat-number" id="confirmation-rate">-</p>
-          </div>
-        </div>
-
-        <div class="section-card">
-          <h3><i class="fas fa-list"></i> Actividad Reciente (hoy)</h3>
-          <div id="recent-activity" class="activity-list">
-            <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando actividad...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: RESTAURANTS
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-restaurants" class="tab-content">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-store"></i> Restaurantes</h2>
-            <p>Gestiona todos los restaurantes del SaaS — clic en una fila para ver detalle</p>
-          </div>
-          <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="search-restaurants" placeholder="Buscar restaurante...">
-          </div>
-        </div>
-
-        <div class="restaurants-table-container">
-          <table class="restaurants-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Ciudad</th>
-                <th>Subdominio</th>
-                <th>Salud</th>
-                <th>Reservas 7d</th>
-                <th>Cubiertos 7d</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="restaurants-body">
-              <tr><td colspan="8" class="loading-cell"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: CREATE NEW CLIENT
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-create" class="tab-content">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-plus-circle"></i> Nuevo Cliente</h2>
-            <p>Crea un nuevo restaurante en segundos — subdominio automático</p>
-          </div>
-        </div>
-
-        <div class="create-wizard">
-          <!-- Step 1: Info -->
-          <div class="wizard-step active" id="step-info">
-            <div class="step-header">
-              <span class="step-number">1</span>
-              <h3>Información del Restaurante</h3>
-            </div>
-            <div class="step-content">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Nombre del Restaurante *</label>
-                  <input type="text" id="new-name" placeholder="Ej: Bar La Esquina" oninput="previewSubdomain()">
-                </div>
-                <div class="form-group">
-                  <label>Ciudad</label>
-                  <input type="text" id="new-city" placeholder="Ej: Madrid">
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Email del Administrador</label>
-                  <input type="email" id="new-email" placeholder="admin@restaurante.com">
-                </div>
-                <div class="form-group">
-                  <label>Teléfono</label>
-                  <input type="text" id="new-phone" placeholder="600 000 000">
-                </div>
-              </div>
-              <div class="subdomain-preview" id="subdomain-preview">
-                <i class="fas fa-globe"></i>
-                <span>Tu URL será: <strong id="subdomain-url">-</strong></span>
-              </div>
-              <button class="btn-primary" onclick="validateStep1()"><i class="fas fa-arrow-right"></i> Siguiente</button>
-            </div>
-          </div>
-
-          <!-- Step 2: Confirm -->
-          <div class="wizard-step" id="step-confirm">
-            <div class="step-header">
-              <span class="step-number">2</span>
-              <h3>Confirmar Configuración</h3>
-            </div>
-            <div class="step-content">
-              <div class="confirm-details" id="confirm-details"></div>
-              <div class="warning-box">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Esto creará un proyecto Supabase nuevo, configurará el subdominio y desplegará automáticamente. El proceso puede tardar 2-4 minutos.</p>
-              </div>
-              <div class="button-row">
-                <button class="btn-surface" onclick="goToStep('step-info')"><i class="fas fa-arrow-left"></i> Volver</button>
-                <button class="btn-primary btn-create" id="btn-start-creation" onclick="startCreation()"><i class="fas fa-rocket"></i> Crear Restaurante</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 3: Creating -->
-          <div class="wizard-step" id="step-creating">
-            <div class="step-header">
-              <span class="step-number"><i class="fas fa-spinner fa-spin"></i></span>
-              <h3>Creando Restaurante...</h3>
-            </div>
-            <div class="step-content">
-              <div class="creation-log" id="creation-log">
-                <div class="log-entry pending" id="log-supabase">
-                  <i class="fas fa-circle"></i> Creando proyecto Supabase...
-                </div>
-                <div class="log-entry pending" id="log-config">
-                  <i class="fas fa-circle"></i> Configurando base de datos...
-                </div>
-                <div class="log-entry pending" id="log-register">
-                  <i class="fas fa-circle"></i> Registrando en GastroExperience...
-                </div>
-                <div class="log-entry pending" id="log-dns">
-                  <i class="fas fa-circle"></i> Configurando subdominio...
-                </div>
-                <div class="log-entry pending" id="log-complete">
-                  <i class="fas fa-circle"></i> ¡Restaurante listo!
-                </div>
-              </div>
-              <div class="progress-bar-container">
-                <div class="progress-bar" id="creation-progress"></div>
-              </div>
-              <p id="creation-status" class="creation-status">Iniciando...</p>
-            </div>
-          </div>
-
-          <!-- Step 4: Done -->
-          <div class="wizard-step" id="step-done">
-            <div class="step-header">
-              <span class="step-number"><i class="fas fa-check-circle" style="color:var(--success)"></i></span>
-              <h3>¡Restaurante Creado!</h3>
-            </div>
-            <div class="step-content">
-              <div class="success-details" id="success-details"></div>
-              <div class="button-row" style="justify-content:center;">
-                <button class="btn-primary" onclick="resetWizard()"><i class="fas fa-plus"></i> Crear Otro</button>
-                <button class="btn-success" onclick="openTab('restaurants'); loadRestaurants();"><i class="fas fa-store"></i> Ver Restaurantes</button>
-              </div>
+            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-info">
+              <span class="stat-value" id="stat-covers-today">—</span>
+              <span class="stat-label">Covers hoy</span>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: DATABASE BROWSER
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-database" class="tab-content">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-database"></i> Base de Datos</h2>
-            <p>Navega y edita las tablas de la base de datos principal</p>
+        
+        <div class="alert-summary" id="alert-summary">
+          <div class="alert-card alert-ok">
+            <i class="fa-solid fa-circle-check"></i>
+            <span id="alert-ok-count">0</span> OK
+          </div>
+          <div class="alert-card alert-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="alert-warning-count">0</span> Warnings
+          </div>
+          <div class="alert-card alert-error">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <span id="alert-error-count">0</span> Errores
           </div>
         </div>
-
-        <div class="db-toolbar">
-          <div class="db-table-selector">
-            <label>Tabla:</label>
+        
+        <div class="activity-section">
+          <h2><i class="fa-solid fa-clock-rotate-left"></i> Actividad Reciente</h2>
+          <div class="activity-list" id="activity-list">
+            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Cargando actividad...</div>
+          </div>
+        </div>
+        
+        <div class="restaurant-grid" id="restaurant-grid-overview">
+          <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Cargando restaurantes...</div>
+        </div>
+      </section>
+      
+      <!-- Restaurants View -->
+      <section id="view-restaurants" class="view">
+        <div class="restaurant-layout">
+          <div class="restaurant-sidebar" id="restaurant-sidebar">
+            <div class="restaurant-sidebar-header">
+              <h3>Restaurantes</h3>
+              <button class="btn btn-sm btn-primary" onclick="showNewRestaurantForm()">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div class="restaurant-list" id="restaurant-list">
+              <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i></div>
+            </div>
+          </div>
+          
+          <div class="restaurant-detail" id="restaurant-detail">
+            <div class="empty-state" id="restaurant-empty">
+              <i class="fa-solid fa-arrow-left"></i>
+              <h3>Selecciona un restaurante</h3>
+              <p>Elige un restaurante de la lista para gestionar</p>
+            </div>
+            
+            <div class="restaurant-content hidden" id="restaurant-content">
+              <div class="detail-header">
+                <button class="btn btn-ghost" onclick="backToList()">
+                  <i class="fa-solid fa-arrow-left"></i> Volver
+                </button>
+                <h2 id="detail-restaurant-name">—</h2>
+                <div class="detail-actions">
+                  <button class="btn btn-sm" onclick="refreshRestaurantData()">
+                    <i class="fa-solid fa-refresh"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="tabs">
+                <button class="tab active" data-tab="resumen">Resumen</button>
+                <button class="tab" data-tab="info">Info</button>
+                <button class="tab" data-tab="carta">Carta</button>
+                <button class="tab" data-tab="reservas">Reservas</button>
+                <button class="tab" data-tab="zonas">Zonas</button>
+                <button class="tab" data-tab="horarios">Horarios</button>
+                <button class="tab" data-tab="password">Password</button>
+                <button class="tab" data-tab="herramientas">Herramientas</button>
+              </div>
+              
+              <!-- Resumen Tab -->
+              <div class="tab-content active" id="tab-resumen">
+                <div class="health-grid" id="health-grid">
+                  <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Ejecutando diagnóstico...</div>
+                </div>
+                <div class="quick-stats">
+                  <div class="qs-card">
+                    <span class="qs-value" id="qs-reservations">—</span>
+                    <span class="qs-label">Reservas hoy</span>
+                  </div>
+                  <div class="qs-card">
+                    <span class="qs-value" id="qs-covers">—</span>
+                    <span class="qs-label">Covers hoy</span>
+                  </div>
+                  <div class="qs-card">
+                    <span class="qs-value" id="qs-confirmation-rate">—</span>
+                    <span class="qs-label">% Confirmación</span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Info Tab -->
+              <div class="tab-content" id="tab-info">
+                <form id="info-form" class="form-grid">
+                  <div class="form-group">
+                    <label>Nombre del restaurante</label>
+                    <input type="text" id="info-bar_name" placeholder="Nombre">
+                  </div>
+                  <div class="form-group">
+                    <label>Ciudad</label>
+                    <input type="text" id="info-bar_city" placeholder="Ciudad">
+                  </div>
+                  <div class="form-group">
+                    <label>Dirección</label>
+                    <input type="text" id="info-bar_address" placeholder="Dirección">
+                  </div>
+                  <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" id="info-bar_phone" placeholder="Teléfono">
+                  </div>
+                  <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="info-email" placeholder="Email">
+                  </div>
+                  <div class="form-group">
+                    <label>Subdomain</label>
+                    <input type="text" id="info-subdomain" placeholder="subdomain">
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-save"></i> Guardar cambios
+                    </button>
+                  </div>
+                </form>
+              </div>
+              
+              <!-- Carta Tab -->
+              <div class="tab-content" id="tab-carta">
+                <div class="tab-toolbar">
+                  <input type="text" id="carta-search" placeholder="Buscar plato..." class="search-input">
+                  <button class="btn btn-primary" onclick="showAddMenuItem()">
+                    <i class="fa-solid fa-plus"></i> Añadir plato
+                  </button>
+                </div>
+                <div class="table-container">
+                  <table class="data-table" id="carta-table">
+                    <thead>
+                      <tr>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio</th>
+                        <th>Disponible</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="carta-tbody">
+                      <tr><td colspan="5" class="loading"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <!-- Reservas Tab -->
+              <div class="tab-content" id="tab-reservas">
+                <div class="tab-toolbar">
+                  <div class="date-range">
+                    <input type="date" id="reservas-date-from">
+                    <span>hasta</span>
+                    <input type="date" id="reservas-date-to">
+                    <button class="btn btn-sm" onclick="loadReservations()">
+                      <i class="fa-solid fa-filter"></i> Filtrar
+                    </button>
+                  </div>
+                  <button class="btn btn-sm" onclick="loadReservations()">
+                    <i class="fa-solid fa-refresh"></i>
+                  </button>
+                </div>
+                <div class="table-container">
+                  <table class="data-table" id="reservas-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Hora</th>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Personas</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="reservas-tbody">
+                      <tr><td colspan="7" class="loading"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="pagination" id="reservas-pagination"></div>
+              </div>
+              
+              <!-- Zonas Tab -->
+              <div class="tab-content" id="tab-zonas">
+                <div class="tab-toolbar">
+                  <button class="btn btn-primary" onclick="showAddZone()">
+                    <i class="fa-solid fa-plus"></i> Añadir zona
+                  </button>
+                </div>
+                <div class="zones-grid" id="zones-grid">
+                  <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i></div>
+                </div>
+              </div>
+              
+              <!-- Horarios Tab -->
+              <div class="tab-content" id="tab-horarios">
+                <form id="horarios-form" class="schedule-grid">
+                  <div class="schedule-day" data-day="monday">
+                    <label>Lunes</label>
+                    <input type="time" id="schedule-monday-open" placeholder="Abre">
+                    <input type="time" id="schedule-monday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="tuesday">
+                    <label>Martes</label>
+                    <input type="time" id="schedule-tuesday-open" placeholder="Abre">
+                    <input type="time" id="schedule-tuesday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="wednesday">
+                    <label>Miércoles</label>
+                    <input type="time" id="schedule-wednesday-open" placeholder="Abre">
+                    <input type="time" id="schedule-wednesday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="thursday">
+                    <label>Jueves</label>
+                    <input type="time" id="schedule-thursday-open" placeholder="Abre">
+                    <input type="time" id="schedule-thursday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="friday">
+                    <label>Viernes</label>
+                    <input type="time" id="schedule-friday-open" placeholder="Abre">
+                    <input type="time" id="schedule-friday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="saturday">
+                    <label>Sábado</label>
+                    <input type="time" id="schedule-saturday-open" placeholder="Abre">
+                    <input type="time" id="schedule-saturday-close" placeholder="Cierra">
+                  </div>
+                  <div class="schedule-day" data-day="sunday">
+                    <label>Domingo</label>
+                    <input type="time" id="schedule-sunday-open" placeholder="Abre">
+                    <input type="time" id="schedule-sunday-close" placeholder="Cierra">
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-save"></i> Guardar horarios
+                    </button>
+                  </div>
+                </form>
+              </div>
+              
+              <!-- Password Tab -->
+              <div class="tab-content" id="tab-password">
+                <form id="password-form" class="form-stack">
+                  <div class="form-group">
+                    <label>Nuevo password de administrador</label>
+                    <input type="password" id="new-admin-password" placeholder="Introduce nuevo password">
+                  </div>
+                  <div class="form-group">
+                    <label>Confirmar password</label>
+                    <input type="password" id="confirm-admin-password" placeholder="Confirma nuevo password">
+                  </div>
+                  <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-key"></i> Cambiar password
+                  </button>
+                </form>
+              </div>
+              
+              <!-- Herramientas Tab -->
+              <div class="tab-content" id="tab-herramientas">
+                <div class="tools-grid">
+                  <button class="tool-card" onclick="runHealthCheck()">
+                    <i class="fa-solid fa-stethoscope"></i>
+                    <span>Diagnosticar</span>
+                  </button>
+                  <a class="tool-card" id="tool-public-site" href="#" target="_blank">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>Abrir web pública</span>
+                  </a>
+                  <a class="tool-card" id="tool-restaurant-admin" href="#" target="_blank">
+                    <i class="fa-solid fa-user-gear"></i>
+                    <span>Abrir admin restaurante</span>
+                  </a>
+                  <button class="tool-card" onclick="forceSyncConfig()">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>Forzar sync config</span>
+                  </button>
+                </div>
+                <div class="danger-zone">
+                  <h3><i class="fa-solid fa-triangle-exclamation"></i> Zona de peligro</h3>
+                  <button class="btn btn-danger" onclick="deleteRestaurant()">
+                    <i class="fa-solid fa-trash"></i> Eliminar restaurante
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Database Browser View -->
+      <section id="view-database" class="view">
+        <div class="view-header">
+          <h1>Explorador de Base de Datos</h1>
+          <p>Explora y edita tablas directamente</p>
+        </div>
+        <div class="db-controls">
+          <div class="db-selectors">
             <select id="db-table-select">
+              <option value="">Selecciona tabla...</option>
               <option value="settings">settings</option>
               <option value="menu_items">menu_items</option>
               <option value="reservations">reservations</option>
               <option value="special_days">special_days</option>
               <option value="products">products</option>
               <option value="time_slots">time_slots</option>
+              <option value="restaurants">restaurants</option>
             </select>
-          </div>
-          <div class="search-box">
-            <i class="fas fa-filter"></i>
-            <input type="text" id="db-restaurant-filter" placeholder="Filtrar por restaurant_id...">
-          </div>
-          <button class="btn-primary" onclick="loadDbTable()"><i class="fas fa-sync-alt"></i> Cargar</button>
-          <button class="btn-success" onclick="openAddRowModal()"><i class="fas fa-plus"></i> Añadir Fila</button>
-        </div>
-
-        <div class="db-table-container">
-          <table class="db-table" id="db-table">
-            <thead id="db-thead">
-              <tr><th>Cargando...</th></tr>
-            </thead>
-            <tbody id="db-tbody">
-              <tr><td><i class="fas fa-spinner fa-spin"></i></td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="db-pagination" id="db-pagination">
-          <button class="btn-surface" id="db-prev" onclick="dbPagePrev()" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
-          <span id="db-page-info">Página 1</span>
-          <button class="btn-surface" id="db-next" onclick="dbPageNext()" disabled>Siguiente <i class="fas fa-chevron-right"></i></button>
-        </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: ANALYTICS
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-analytics" class="tab-content">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-chart-pie"></i> Analytics Global</h2>
-            <p>Datos agregados de todos los restaurantes</p>
-          </div>
-          <button class="btn-primary" onclick="loadAnalytics()"><i class="fas fa-sync-alt"></i> Refrescar</button>
-        </div>
-
-        <div class="stats-grid">
-          <div class="stat-card">
-            <h3><i class="fas fa-calendar-alt"></i> Reservas (30 días)</h3>
-            <p class="stat-number" id="analytics-res-30d">-</p>
-          </div>
-          <div class="stat-card">
-            <h3><i class="fas fa-users"></i> Cubiertos (30 días)</h3>
-            <p class="stat-number" id="analytics-covers-30d">-</p>
-          </div>
-          <div class="stat-card">
-            <h3><i class="fas fa-chair"></i> Media pax/reserva</h3>
-            <p class="stat-number" id="analytics-avg-pax">-</p>
-          </div>
-          <div class="stat-card">
-            <h3><i class="fas fa-clock"></i> Hora pico global</h3>
-            <p class="stat-number" id="analytics-peak-hour">-</p>
+            <input type="text" id="db-restaurant-id" placeholder="Filtrar por restaurant_id..." class="search-input">
+            <button class="btn btn-primary" onclick="loadDbTable()">
+              <i class="fa-solid fa-search"></i> Cargar
+            </button>
           </div>
         </div>
-
-        <div class="charts-grid">
-          <div class="section-card chart-card">
-            <h3>Reservas por Restaurante (últimos 7 días)</h3>
-            <div class="chart-container"><canvas id="chart-by-restaurant"></canvas></div>
-          </div>
-          <div class="section-card chart-card">
-            <h3>Cubiertos por Restaurante (últimos 7 días)</h3>
-            <div class="chart-container"><canvas id="chart-covers-by-restaurant"></canvas></div>
-          </div>
-          <div class="section-card chart-card chart-card-wide">
-            <h3>Tendencia de Reservas (30 días)</h3>
-            <div class="chart-container"><canvas id="chart-trend"></canvas></div>
+        <div class="db-content" id="db-content">
+          <div class="empty-state">
+            <i class="fa-solid fa-database"></i>
+            <h3>Selecciona una tabla</h3>
+            <p>Elige una tabla para explorar sus datos</p>
           </div>
         </div>
-      </div>
-
-      <!-- ═══════════════════════════════════════════════════
-           TAB: SYSTEM
-      ════════════════════════════════════════════════════ -->
-      <div id="tab-system" class="tab-content">
-        <div class="overview-header">
-          <div>
-            <h2><i class="fas fa-server"></i> Estado del Sistema</h2>
-            <p>Infraestructura y configuración global</p>
+      </section>
+      
+      <!-- New Client View -->
+      <section id="view-new-client" class="view">
+        <div class="view-header">
+          <h1>Nuevo Cliente</h1>
+          <p>Crea un nuevo restaurante</p>
+        </div>
+        <form id="new-client-form" class="form-stack">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombre del restaurante *</label>
+              <input type="text" id="nc-name" required placeholder="El Jardín de...">
+            </div>
+            <div class="form-group">
+              <label>Ciudad *</label>
+              <input type="text" id="nc-city" required placeholder="Barcelona">
+            </div>
+            <div class="form-group">
+              <label>Email *</label>
+              <input type="email" id="nc-email" required placeholder="admin@restaurante.com">
+            </div>
+            <div class="form-group">
+              <label>Teléfono</label>
+              <input type="text" id="nc-phone" placeholder="+34 600 000 000">
+            </div>
+            <div class="form-group">
+              <label>Subdomain (auto-generado)</label>
+              <input type="text" id="nc-subdomain" readonly placeholder="Generado automáticamente">
+            </div>
+            <div class="form-group">
+              <label>Password admin *</label>
+              <input type="password" id="nc-password" required placeholder="Password para el admin">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="fa-solid fa-rocket"></i> Crear restaurante
+            </button>
+          </div>
+        </form>
+        <div id="new-client-result" class="result-box hidden"></div>
+      </section>
+      
+      <!-- System View -->
+      <section id="view-system" class="view">
+        <div class="view-header">
+          <h1>Sistema</h1>
+          <p>Estado y configuración del sistema</p>
+        </div>
+        <div class="system-status" id="system-status">
+          <div class="status-card">
+            <i class="fa-solid fa-cloud"></i>
+            <span class="status-name">Vercel</span>
+            <span class="status-value" id="status-vercel">—</span>
+          </div>
+          <div class="status-card">
+            <i class="fa-solid fa-database"></i>
+            <span class="status-name">Supabase API</span>
+            <span class="status-value" id="status-supabase">—</span>
+          </div>
+          <div class="status-card">
+            <i class="fa-brands fa-github"></i>
+            <span class="status-name">GitHub</span>
+            <span class="status-value" id="status-github">—</span>
+          </div>
+          <div class="status-card">
+            <i class="fa-solid fa-asterisk"></i>
+            <span class="status-name">DNS Wildcard</span>
+            <span class="status-value" id="status-dns">—</span>
           </div>
         </div>
-
-        <div class="stats-grid" id="system-status-cards">
-          <div class="stat-card" id="status-vercel">
-            <h3><i class="fas fa-cloud"></i> Vercel</h3>
-            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
-          </div>
-          <div class="stat-card" id="status-supabase">
-            <h3><i class="fas fa-database"></i> Supabase</h3>
-            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
-          </div>
-          <div class="stat-card" id="status-github">
-            <h3><i class="fas fa-github"></i> GitHub</h3>
-            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
-          </div>
-          <div class="stat-card" id="status-dns">
-            <h3><i class="fas fa-shield-alt"></i> DNS</h3>
-            <p class="stat-checking"><i class="fas fa-spinner fa-spin"></i> Comprobando...</p>
-          </div>
+        
+        <div class="system-section">
+          <h3><i class="fa-solid fa-key"></i> Cambiar Master Password</h3>
+          <form id="master-password-form" class="form-stack">
+            <div class="form-group">
+              <label>Nuevo master password</label>
+              <input type="password" id="new-master-password" placeholder="Nuevo password">
+            </div>
+            <div class="form-group">
+              <label>Confirmar</label>
+              <input type="password" id="confirm-master-password" placeholder="Confirmar">
+            </div>
+            <button type="submit" class="btn btn-warning">
+              <i class="fa-solid fa-save"></i> Guardar (requiere redeploy)
+            </button>
+          </form>
         </div>
-
-        <div class="section-card">
-          <h3><i class="fas fa-info-circle"></i> Información del Sistema</h3>
+        
+        <div class="system-section">
+          <h3><i class="fa-solid fa-triangle-exclamation"></i> Redeploy</h3>
+          <p>Despliega la última versión del código.</p>
+          <button class="btn btn-primary" onclick="redeployVercel()">
+            <i class="fa-solid fa-upload"></i> Redeploy a Vercel
+          </button>
+        </div>
+        
+        <div class="system-section">
+          <h3><i class="fa-solid fa-info-circle"></i> Información</h3>
           <div class="info-grid">
             <div class="info-item">
               <span class="info-label">Proyecto</span>
               <span class="info-value">gastroexperience</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Dominio</span>
-              <span class="info-value">gastroexperiencem.es</span>
+              <span class="info-label">Repo</span>
+              <span class="info-value">gastroexperience/gastroexperience</span>
             </div>
             <div class="info-item">
-              <span class="info-label">Repo GitHub</span>
-              <span class="info-value">marquezchinchonsl-sketch/gastroexperiencem</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">BD Supabase</span>
+              <span class="info-label">DB ID</span>
               <span class="info-value">xornvhqqjovcucpuqgoo</span>
             </div>
             <div class="info-item">
-              <span class="info-label">URL Admin</span>
-              <span class="info-value">gastroexperiencem.es/dashboard</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Dashboard</span>
-              <span class="info-value">gastroexperiencem.es/master-admin.html</span>
+              <span class="info-label">Entorno</span>
+              <span class="info-value">Producción</span>
             </div>
           </div>
         </div>
-
-        <div class="section-card">
-          <h3><i class="fas fa-key"></i> Cambiar Contraseña Maestra</h3>
-          <div class="form-row" style="max-width:500px;">
-            <div class="form-group">
-              <label>Nueva Contraseña</label>
-              <input type="password" id="new-master-password" placeholder="Nueva contraseña maestra">
-            </div>
-            <div class="form-group">
-              <label>Confirmar</label>
-              <input type="password" id="confirm-master-password" placeholder="Repetir contraseña">
-            </div>
-          </div>
-          <button class="btn-primary" onclick="changeMasterPassword()" style="margin-top:12px;"><i class="fas fa-save"></i> Guardar Nueva Contraseña</button>
-        </div>
-
-        <div class="section-card">
-          <h3><i class="fas fa-terminal"></i> Acciones Rápidas</h3>
-          <div class="action-buttons">
-            <button class="btn-primary" onclick="triggerDeploy()"><i class="fas fa-sync"></i> Forzar Redeploy</button>
-            <button class="btn-warning" onclick="refreshAllMetrics()"><i class="fas fa-chart-line"></i> Refrescar Métricas</button>
-            <button class="btn-danger" onclick="exportAllData()"><i class="fas fa-download"></i> Exportar Datos</button>
-          </div>
-        </div>
-      </div>
-
+      </section>
     </main>
   </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════
-     RESTAURANT DETAIL MODAL
-═══════════════════════════════════════════════════════════ -->
-<div id="restaurant-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box modal-wide">
-    <div class="modal-header" id="modal-header">
-      <div class="modal-header-info">
-        <h2 id="modal-restaurant-name">Restaurante</h2>
-        <p id="modal-restaurant-meta">—</p>
+  
+  <!-- Modals -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal</h3>
+        <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-times"></i></button>
       </div>
-      <div class="modal-header-actions">
-        <label class="toggle-switch">
-          <input type="checkbox" id="modal-status-toggle" onchange="toggleRestaurantStatus()">
-          <span class="toggle-slider"></span>
-          <span class="toggle-label" id="modal-status-label">Activo</span>
-        </label>
-        <button class="modal-close" onclick="closeRestaurantModal()"><i class="fas fa-times"></i></button>
-      </div>
-    </div>
-
-    <!-- Health Checklist -->
-    <div class="health-checklist" id="health-checklist">
-      <div class="health-loading"><i class="fas fa-spinner fa-spin"></i> Comprobando estado del restaurante...</div>
-    </div>
-
-    <!-- Sub-Tabs -->
-    <div class="modal-subtabs">
-      <button class="sub-tab active" data-subtab="info"><i class="fas fa-info-circle"></i> Info</button>
-      <button class="sub-tab" data-subtab="carta"><i class="fas fa-utensils"></i> Carta</button>
-      <button class="sub-tab" data-subtab="reservas"><i class="fas fa-calendar-check"></i> Reservas</button>
-      <button class="sub-tab" data-subtab="zonas"><i class="fas fa-chair"></i> Zonas</button>
-      <button class="sub-tab" data-subtab="horarios"><i class="fas fa-clock"></i> Horarios</button>
-      <button class="sub-tab" data-subtab="password"><i class="fas fa-key"></i> Password</button>
-    </div>
-
-    <!-- Sub-tab content: INFO -->
-    <div class="modal-subcontent active-subtab" id="subtab-info">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Nombre del Establecimiento</label>
-          <input type="text" id="info-bar-name" placeholder="Bar La Esquina">
-        </div>
-        <div class="form-group">
-          <label>Ciudad</label>
-          <input type="text" id="info-bar-city" placeholder="Madrid">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Dirección</label>
-          <input type="text" id="info-bar-address" placeholder="Calle Gran Vía, 42">
-        </div>
-        <div class="form-group">
-          <label>Teléfono</label>
-          <input type="text" id="info-bar-phone" placeholder="91 123 45 67">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Email</label>
-          <input type="email" id="info-email" placeholder="admin@restaurante.com">
-        </div>
-        <div class="form-group">
-          <label>Subdominio</label>
-          <input type="text" id="info-subdomain" placeholder="bar-la-esquina" style="font-family:monospace;">
-        </div>
-      </div>
-      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn-primary" onclick="saveRestaurantInfo()"><i class="fas fa-save"></i> Guardar Cambios</button>
-        <button class="btn-success" onclick="openAdminInNewTab()"><i class="fas fa-external-link-alt"></i> Abrir Admin</button>
-        <button class="btn-surface" onclick="openWebInNewTab()"><i class="fas fa-globe"></i> Ver Web</button>
-      </div>
-    </div>
-
-    <!-- Sub-tab content: CARTA -->
-    <div class="modal-subcontent" id="subtab-carta">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-        <h3 style="font-size:1rem;font-weight:600;"><i class="fas fa-utensils"></i> Platos de la Carta</h3>
-        <button class="btn-success" onclick="openAddMenuItemModal()"><i class="fas fa-plus"></i> Añadir Plato</button>
-      </div>
-      <div class="modal-table-container">
-        <table class="modal-table" id="carta-table">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Categoría</th>
-              <th>Precio</th>
-              <th>Visible</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="carta-tbody">
-            <tr><td colspan="5" class="loading-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Sub-tab content: RESERVAS -->
-    <div class="modal-subcontent" id="subtab-reservas">
-      <div class="reservas-toolbar">
-        <div>
-          <label style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin-right:8px;">Desde:</label>
-          <input type="date" id="reservas-date-from">
-          <label style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin:0 8px;">Hasta:</label>
-          <input type="date" id="reservas-date-to">
-        </div>
-        <button class="btn-primary" onclick="loadRestaurantReservations()"><i class="fas fa-filter"></i> Filtrar</button>
-      </div>
-      <div class="modal-table-container">
-        <table class="modal-table" id="reservas-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Hora</th>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>Personas</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="reservas-tbody">
-            <tr><td colspan="7" class="loading-cell"><i class="fas fa-spinner fa-spin"></i></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Sub-tab content: ZONAS -->
-    <div class="modal-subcontent" id="subtab-zonas">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-        <h3 style="font-size:1rem;font-weight:600;"><i class="fas fa-chair"></i> Zonas del Local</h3>
-        <button class="btn-success" onclick="openAddZoneModal()"><i class="fas fa-plus"></i> Añadir Zona</button>
-      </div>
-      <div id="zonas-list" class="zonas-list">
-        <div class="loading"><i class="fas fa-spinner fa-spin"></i></div>
-      </div>
-    </div>
-
-    <!-- Sub-tab content: HORARIOS -->
-    <div class="modal-subcontent" id="subtab-horarios">
-      <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;"><i class="fas fa-clock"></i> Horario Semanal</h3>
-      <div class="schedule-grid" id="schedule-grid">
-        <!-- Generated by JS -->
-      </div>
-      <button class="btn-primary" onclick="saveRestaurantSchedule()" style="margin-top:16px;"><i class="fas fa-save"></i> Guardar Horarios</button>
-    </div>
-
-    <!-- Sub-tab content: PASSWORD -->
-    <div class="modal-subcontent" id="subtab-password">
-      <h3 style="font-size:1rem;font-weight:600;margin-bottom:16px;"><i class="fas fa-key"></i> Cambiar Contraseña de Admin</h3>
-      <div class="form-group" style="max-width:400px;margin-bottom:16px;">
-        <label>Nueva Contraseña</label>
-        <input type="password" id="new-restaurant-password" placeholder="Nueva contraseña">
-      </div>
-      <div class="form-group" style="max-width:400px;margin-bottom:16px;">
-        <label>Confirmar Contraseña</label>
-        <input type="password" id="confirm-restaurant-password" placeholder="Repetir contraseña">
-      </div>
-      <button class="btn-primary" onclick="saveRestaurantPassword()"><i class="fas fa-save"></i> Cambiar Contraseña</button>
-    </div>
-
-  </div>
-</div>
-
-<!-- ADD MENU ITEM MODAL -->
-<div id="add-menuitem-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:480px;">
-    <div class="modal-header" style="padding:20px 24px;">
-      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Plato</h2>
-      <button class="modal-close" onclick="closeAddMenuItemModal()"><i class="fas fa-times"></i></button>
-    </div>
-    <div style="padding:0 24px 24px;">
-      <div class="form-group" style="margin-bottom:12px;">
-        <label>Nombre *</label>
-        <input type="text" id="mi-name" placeholder="Nombre del plato">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Categoría</label>
-          <input type="text" id="mi-category" placeholder="Ej: Raciones">
-        </div>
-        <div class="form-group">
-          <label>Precio (€)</label>
-          <input type="number" id="mi-price" placeholder="0.00" step="0.01" min="0">
-        </div>
-      </div>
-      <div class="form-group" style="margin-bottom:16px;">
-        <label>Descripción / Info</label>
-        <input type="text" id="mi-info" placeholder="Ingredientes, alérgenos...">
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn-primary" onclick="addMenuItem()"><i class="fas fa-plus"></i> Añadir</button>
-        <button class="btn-surface" onclick="closeAddMenuItemModal()">Cancelar</button>
-      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
     </div>
   </div>
-</div>
-
-<!-- ADD ZONE MODAL -->
-<div id="add-zone-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:400px;">
-    <div class="modal-header" style="padding:20px 24px;">
-      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Zona</h2>
-      <button class="modal-close" onclick="closeAddZoneModal()"><i class="fas fa-times"></i></button>
-    </div>
-    <div style="padding:0 24px 24px;">
-      <div class="form-group" style="margin-bottom:12px;">
-        <label>Nombre de Zona *</label>
-        <input type="text" id="zone-title" placeholder="Ej: Interior, Terraza...">
-      </div>
-      <div class="form-group" style="margin-bottom:16px;">
-        <label>Capacidad (cubiertos)</label>
-        <input type="number" id="zone-capacity" placeholder="20" min="1">
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn-primary" onclick="addZone()"><i class="fas fa-plus"></i> Añadir</button>
-        <button class="btn-surface" onclick="closeAddZoneModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ADD DB ROW MODAL -->
-<div id="add-row-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:560px;">
-    <div class="modal-header" style="padding:20px 24px;">
-      <h2 style="font-size:1.1rem;"><i class="fas fa-plus"></i> Añadir Fila — <span id="add-row-table-name">settings</span></h2>
-      <button class="modal-close" onclick="closeAddRowModal()"><i class="fas fa-times"></i></button>
-    </div>
-    <div style="padding:0 24px 24px;">
-      <div id="add-row-fields"></div>
-      <div style="display:flex;gap:10px;margin-top:16px;">
-        <button class="btn-primary" onclick="submitAddRow()"><i class="fas fa-plus"></i> Añadir</button>
-        <button class="btn-surface" onclick="closeAddRowModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- CONFIRM DELETE MODAL -->
-<div id="confirm-delete-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-box" style="max-width:400px;">
-    <div style="padding:32px;text-align:center;">
-      <div style="font-size:2.5rem;margin-bottom:16px;">⚠️</div>
-      <h3 style="margin-bottom:8px;">¿Eliminar esta fila?</h3>
-      <p id="confirm-delete-message" style="color:var(--text-dim);margin-bottom:24px;font-size:0.9rem;"></p>
-      <div style="display:flex;gap:12px;justify-content:center;">
-        <button class="btn-danger" id="confirm-delete-btn" onclick="confirmDelete()"><i class="fas fa-trash"></i> Eliminar</button>
-        <button class="btn-surface" onclick="closeConfirmDeleteModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-<script src="master-admin.js"></script>
+  
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+  
+  <script src="master-admin.js"></script>
 </body>
 </html>
