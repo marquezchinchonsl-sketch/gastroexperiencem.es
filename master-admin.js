@@ -86,13 +86,42 @@ async function supabaseFetch(url, options = {}, key = MAIN_SUPABASE_KEY) {
 
 async function loadRestaurants() {
   try {
+    // Get all settings rows to extract unique restaurant IDs and their config
     const res = await supabaseFetch(
-      `${MAIN_SUPABASE_URL}/rest/v1/restaurants?select=*&order=name.asc`
+      `${MAIN_SUPABASE_URL}/rest/v1/settings?select=restaurant_id,key,value`
     );
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    restaurants = await res.json();
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — verificar RLS en tabla settings');
+    const allSettings = await res.json();
+    if (!allSettings || allSettings.length === 0) {
+      toast('No hay restaurantes. La tabla settings está vacía o RLS la bloquea.', 'warning');
+      restaurants = [];
+      renderRestaurantList();
+      updateOverviewStats();
+      return [];
+    }
+
+    // Deduplicate restaurant IDs
+    const rids = [...new Set(allSettings.map(r => r.restaurant_id))];
+    restaurants = rids.map(rid => {
+      const rows = allSettings.filter(s => s.restaurant_id === rid);
+      const cfg = {};
+      for (const row of rows) {
+        try { cfg[row.key] = JSON.parse(row.value); } catch { cfg[row.key] = row.value; }
+      }
+      return {
+        restaurant_id: rid,
+        name: cfg.bar_name || cfg.biz_name || rid,
+        city: cfg.bar_city || '',
+        subdomain: cfg.subdomain || '',
+        status: cfg.status || 'active',
+        supabase_url: cfg.supabase_url || MAIN_SUPABASE_URL,
+        supabase_key: cfg.supabase_key || MAIN_SUPABASE_KEY,
+        _cfg: cfg
+      };
+    });
+
+    restaurants.sort((a, b) => a.name.localeCompare(b.name));
     renderRestaurantList();
-    renderRestaurantGrid();
     updateOverviewStats();
     return restaurants;
   } catch (e) {
@@ -1197,45 +1226,83 @@ document.getElementById('db-table-select').addEventListener('change', () => {
 async function loadDbTable() {
   const table = document.getElementById('db-table-select').value;
   const restaurantId = document.getElementById('db-restaurant-id').value.trim();
-  
+
   if (!table) {
     toast('Selecciona una tabla', 'warning');
     return;
   }
-  
+
   const content = document.getElementById('db-content');
   content.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Cargando...</div>';
-  
+  dbCurrentPage = 1; // Reset to page 1 on new query
+
   try {
-    let url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
-    
+    // Build query — always filter by restaurant_id if provided, otherwise try to get all
+    let url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?select=*`;
+
     if (restaurantId) {
-      url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
+      url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=*`;
     }
-    
-    const res = await supabaseFetch(url, {}, MAIN_SUPABASE_KEY);
-    
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    
+
+    // Use HEAD request to get total count via Content-Range header
+    const headRes = await supabaseFetch(url, { method: 'HEAD' }, MAIN_SUPABASE_KEY);
+    let totalRows = 0;
+    if (headRes.headers && headRes.headers.get) {
+      const cr = headRes.headers.get('content-range');
+      if (cr) {
+        const match = cr.match(/\/(\d+)$/);
+        if (match) totalRows = parseInt(match[1], 10);
+      }
+    }
+
+    // Now fetch paginated data
+    const pagUrl = `${url}&limit=${dbPageSize}&offset=0`;
+    const res = await supabaseFetch(pagUrl, {}, MAIN_SUPABASE_KEY);
+
+    if (!res.ok) {
+      // If 406 + RLS error, try with RPC set_config workaround
+      if (res.status === 406 || res.status === 400) {
+        content.innerHTML = `<div class="empty-state"><p>RLS bloquea esta tabla sin restaurant_id. Filtrando por BD principal...</p></div>`;
+        toast('Filtrando por BD principal — ' + res.status, 'warning');
+        // Fallback: query only demo restaurant
+        const fallbackUrl = `${MAIN_SUPABASE_URL}/rest/v1/${table}?restaurant_id=eq.demo-restaurante&select=*&limit=${dbPageSize}`;
+        const fallback = await supabaseFetch(fallbackUrl, {}, MAIN_SUPABASE_KEY);
+        if (fallback.ok) {
+          dbTableData = await fallback.json();
+          totalRows = dbTableData.length;
+          renderDbTable(table, totalRows);
+          return;
+        }
+      }
+      throw new Error('HTTP ' + res.status + ' — ' + res.statusText);
+    }
+
     dbTableData = await res.json();
-    renderDbTable(table);
+    if (totalRows === 0) totalRows = dbTableData.length;
+    renderDbTable(table, totalRows);
   } catch (e) {
-    content.innerHTML = `<div class="empty-state"><p>Error: ${esc(e.message)}</p></div>`;
-    toast('Error cargando tabla: ' + e.message, 'error');
+    content.innerHTML = `<div class="empty-state"><p>Error: ${esc(e.message)}</p><small>Verificar: 1) RLS desactivado en Supabase, 2) Tabla existe, 3) Permisos API</small></div>`;
+    toast('Error BD: ' + e.message, 'error');
   }
 }
 
-function renderDbTable(table) {
+function renderDbTable(table, totalRows = null) {
   const content = document.getElementById('db-content');
-  
+
   if (!dbTableData || dbTableData.length === 0) {
-    content.innerHTML = '<div class="empty-state"><p>No hay datos</p></div>';
+    content.innerHTML = '<div class="empty-state"><p>No hay datos en esta tabla (o RLS los filtra)</p><small>Sugerencia: prueba con un restaurant_id específico en el filtro</small></div>';
     return;
   }
-  
+
   const columns = Object.keys(dbTableData[0]);
-  
+  const total = totalRows !== null ? totalRows : dbTableData.length;
+  const totalPages = Math.ceil(total / dbPageSize);
+
   content.innerHTML = `
+    <div class="db-table-info">
+      <span>${total} filas totales</span>
+      <span>Página ${dbCurrentPage} de ${totalPages || 1}</span>
+    </div>
     <div class="table-container">
       <table class="data-table">
         <thead>
@@ -1249,35 +1316,52 @@ function renderDbTable(table) {
             <tr>
               ${columns.map(c => {
                 const val = row[c];
-                const display = val === null ? '<em>null</em>' : (typeof val === 'object' ? esc(JSON.stringify(val)) : esc(String(val)));
-                return `<td><span class="editable-cell" data-table="${table}" data-id="${row.id}" data-field="${c}" onclick="editDbCell(this)">${display}</span></td>`;
+                const display = val === null ? '<em class="null-val">null</em>' : (typeof val === 'object' ? esc(JSON.stringify(val)) : esc(String(val)));
+                const hasId = row.id ? `data-id="${esc(row.id)}"` : '';
+                return `<td><span class="editable-cell" data-table="${esc(table)}" ${hasId} data-field="${esc(c)}" onclick="editDbCell(this)">${display}</span></td>`;
               }).join('')}
               <td>
-                <button class="btn btn-sm btn-danger" onclick="deleteDbRow('${table}', '${row.id}')">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
+                ${row.id ? `<button class="btn btn-sm btn-danger" onclick="deleteDbRow('${esc(table)}', '${esc(row.id)}')"><i class="fa-solid fa-trash"></i></button>` : '<span style="color:var(--text-dim);font-size:0.75rem;">—</span>'}
               </td>
             </tr>
           `).join('')}
         </tbody>
       </table>
     </div>
+    ${totalPages > 1 ? `
     <div class="pagination">
-      <button onclick="changeDbPage(-1)" ${dbCurrentPage === 1 ? 'disabled' : ''}>
-        <i class="fa-solid fa-chevron-left"></i>
-      </button>
-      <span>Página ${dbCurrentPage}</span>
-      <button onclick="changeDbPage(1)" ${dbTableData.length < dbPageSize ? 'disabled' : ''}>
-        <i class="fa-solid fa-chevron-right"></i>
-      </button>
-    </div>
+      <button onclick="changeDbPage(-1)" ${dbCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i> Anterior</button>
+      <span>Página ${dbCurrentPage} / ${totalPages}</span>
+      <button onclick="changeDbPage(1)" ${dbCurrentPage >= totalPages ? 'disabled' : ''}>Siguiente <i class="fa-solid fa-chevron-right"></i></button>
+    </div>` : ''
+  }
   `;
 }
 
 function changeDbPage(delta) {
+  const table = document.getElementById('db-table-select').value;
+  if (!table) return;
+  const total = dbTableData.length;
+  const totalPages = Math.ceil(total / dbPageSize) || 1;
   dbCurrentPage += delta;
   if (dbCurrentPage < 1) dbCurrentPage = 1;
-  loadDbTable();
+  if (dbCurrentPage > totalPages) dbCurrentPage = totalPages;
+  // Reload with offset
+  const restaurantId = document.getElementById('db-restaurant-id').value.trim();
+  const content = document.getElementById('db-content');
+  content.innerHTML = '<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Cargando página ' + dbCurrentPage + '...</div>';
+  (async () => {
+    try {
+      let url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
+      if (restaurantId) url = `${MAIN_SUPABASE_URL}/rest/v1/${table}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&select=*&limit=${dbPageSize}&offset=${(dbCurrentPage - 1) * dbPageSize}`;
+      const res = await supabaseFetch(url, {}, MAIN_SUPABASE_KEY);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      dbTableData = await res.json();
+      renderDbTable(table, total);
+    } catch (e) {
+      content.innerHTML = '<div class="empty-state"><p>Error: ' + esc(e.message) + '</p></div>';
+    }
+  })();
 }
 
 let editingDbCell = null;

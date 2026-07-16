@@ -1348,3 +1348,19 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Database browser */
+.db-table-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.null-val {
+  color: var(--text-muted);
+  font-style: italic;
+}
