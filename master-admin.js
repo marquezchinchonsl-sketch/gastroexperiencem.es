@@ -1732,22 +1732,22 @@ async function checkConnection() {
 
 // ============ INIT ============
 async function init() {
-  // Check connection
-  await checkConnection();
-  
+  // Set default dates first (no DOM deps)
+  const dateFrom = document.getElementById('reservas-date-from');
+  const dateTo = document.getElementById('reservas-date-to');
+  if (dateFrom) dateFrom.value = addDays(-30);
+  if (dateTo) dateTo.value = today();
+
   // Load restaurants
   await loadRestaurants();
-  
-  // Check health for all
-  await checkAllRestaurantsHealth();
-  
-  // Update overview
-  updateOverviewStats();
-  
-  // Set default dates
-  document.getElementById('reservas-date-from').value = addDays(-30);
-  document.getElementById('reservas-date-to').value = today();
+
+  // Check health for all restaurants in background (non-blocking)
+  checkAllRestaurantsHealth().catch(() => {});
 }
 
-// Start
-init();
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
